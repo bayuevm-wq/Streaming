@@ -108,7 +108,7 @@ Proyek portofolio perlu menunjukkan kemampuan membangun aplikasi full-stack yang
 - [ ] Kebijakan autoplay browser ditangani: pemutaran hanya dimulai dari aksi pengguna; jika `play()` ditolak, UI kembali ke status "jeda" tanpa error tak tertangani.
 - [ ] **Tidak boleh:** audio berhenti hanya karena navigasi, atau antrean ter-reset oleh perubahan rute.
 
-**Catatan teknis:** state pemutar disimpan di React Context/Zustand pada layout root; semua navigasi memakai `next/link`. Pastikan tidak ada `window.location` / full reload pada navigasi internal.
+**Catatan teknis:** state pemutar disimpan di **Zustand** (store global yang dipakai dari layout root), dan **satu elemen audio berada di luar siklus render React** (instance singleton yang dibuat sekali di modul/store, bukan elemen JSX sehingga tidak ikut ter-unmount atau dibuat ulang saat render ulang); semua navigasi memakai `next/link`. Pastikan tidak ada `window.location` / full reload pada navigasi internal.
 
 ### F3 — Beranda
 
@@ -207,7 +207,8 @@ Proyek portofolio perlu menunjukkan kemampuan membangun aplikasi full-stack yang
 
 **Acceptance criteria**
 - [ ] Skrip seed idempoten (dijalankan ulang tidak membuat duplikat) menghasilkan ≥ 15 lagu, ≥ 4 album, ≥ 4 artis, lengkap dengan cover.
-- [ ] Semua audio seed berlisensi bebas (CC0 / royalty-free / karya sendiri); sumber dan lisensi dicatat di `README`.
+- [ ] Sumber audio seed: **Pixabay Music atau CC0**; lagu berlisensi NC (non-komersial) **tidak dipakai**. Sumber dan lisensi **tiap lagu** dicatat di `README`.
+- [ ] **Aturan format katalog** (berlaku juga untuk F19): hanya **MP3 dan M4A**, maks **15 MB** per file, disarankan **128–192 kbps**. Skrip seed menolak file di luar aturan ini dengan pesan jelas.
 - [ ] Seed dimasukkan ke **katalog publik** lewat **skrip seed dengan service role** (dijalankan lokal/CI, tidak pernah lewat klien). Ini satu-satunya cara mengisi katalog di MVP.
 - [ ] Seed tidak mencakup like atau playlist (itu milik tiap user); empty state Lagu Disukai, Playlist, dan Library pribadi harus tampak baik untuk pengunjung baru.
 
@@ -219,7 +220,7 @@ Proyek portofolio perlu menunjukkan kemampuan membangun aplikasi full-stack yang
 - [ ] Akun admin berupa akun email dengan role `admin` di `app_metadata`; tidak ada tautan ke login admin di UI publik.
 - [ ] Hanya user dengan role `admin` melihat opsi tujuan **"Katalog publik"** pada form upload; di UI pengunjung opsi ini tidak ada.
 - [ ] Field artis & album berupa input dengan saran dari data yang ada; nama baru membuat entri baru, nama yang sudah ada **dipakai ulang** (tanpa duplikat, tidak peka huruf besar/kecil).
-- [ ] Format audio admin: MP3, M4A, OGG; maks 15 MB; tanpa batas jumlah dan tidak kedaluwarsa. *(angka ini asumsi, bukan keputusan)*
+- [ ] Aturan format katalog sama dengan F9: **MP3 dan M4A saja** (OGG tidak didukung karena dukungan Safari tidak konsisten), maks **15 MB**, disarankan **128–192 kbps**; file di luar aturan ditolak dengan pesan jelas. Tanpa batas jumlah dan tidak kedaluwarsa.
 - [ ] Given upload sukses, Then lagu langsung tampil di beranda dan halaman artis/album terkait tanpa refresh manual.
 - [ ] Given user non-admin memanggil API langsung untuk menulis ke tabel katalog atau bucket publik, Then permintaan **ditolak** oleh RLS/policy Storage.
 
@@ -298,14 +299,15 @@ Karena ini portofolio, metrik diukur dengan daftar periksa dan uji manual, bukan
 6. **Signed URL:** dibuat saat lagu akan diputar, berlaku 1 jam.
 7. **Aktivitas akun:** kolom `last_seen_at` sendiri, diperbarui maksimal 1× per jam; dasar penghapusan akun anonim tidak aktif 7 hari.
 8. **Lagu pribadi kedaluwarsa saat diputar:** dibiarkan selesai; lagu kedaluwarsa lain di antrean dilewati.
+9. **Format katalog (F9 dan F19):** MP3 dan M4A saja (OGG dihapus karena dukungan Safari tidak konsisten), maks 15 MB, disarankan 128–192 kbps.
+10. **Sumber seed:** Pixabay Music atau CC0; hindari lagu berlisensi NC; sumber dan lisensi tiap lagu dicatat di README.
+11. **State pemutar:** Zustand, dengan satu elemen audio di luar siklus render React.
 
 ### Pertanyaan terbuka
 
 | # | Pertanyaan | Pemilik | Sifat |
 |---|---|---|---|
-| 1 | Sumber audio seed dan lisensinya (mis. Free Music Archive, Pixabay, karya sendiri). | Pemilik proyek | Non-blocking |
-| 2 | Pustaka state pemutar: Context vs Zustand? | Engineering | Non-blocking |
-| 3 | Untuk F19 (P1): bagaimana login admin diakses (rute tersembunyi vs hanya lokal)? | Engineering | Non-blocking, dibahas saat F19 dikerjakan |
+| 1 | Untuk F19 (P1): bagaimana login admin diakses (rute tersembunyi vs hanya lokal)? | Engineering | Non-blocking, dibahas saat F19 dikerjakan |
 
 ## 11. Pertimbangan Jadwal & Fase
 
