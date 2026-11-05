@@ -89,7 +89,7 @@ flowchart LR
 | Komponen | Tanggung jawab | Kunci yang dipakai |
 |---|---|---|
 | Client components | UI, pemutar, optimistic like, upload TUS | anon/publishable key + JWT user |
-| Middleware | Refresh sesi (`@supabase/ssr`), redirect ke `/masuk`, 401 untuk `/api/*` | JWT dari cookie |
+| Proxy (`proxy.ts`; di Next.js 16 nama baru untuk middleware) | Refresh sesi (`@supabase/ssr`), redirect ke `/masuk`, 401 untuk `/api/*` | JWT dari cookie |
 | Server Components | Render halaman dengan query ber-RLS | JWT user |
 | Route Handler `finalize` | Validasi isi file, menerbitkan `ready` | JWT user (autentikasi) + service role (baca file, RPC) |
 | Route Handler hapus lagu | Kedaluwarsakan baris, hapus file lalu baris | idem |
@@ -124,6 +124,13 @@ scripts/seed.ts  scripts/seed/catalog.json
 .github/workflows/keepalive.yml    # §13.2 (disalin saat Fase 1)
 e2e/                               # Playwright
 ```
+
+**Catatan Next.js 16 (diterapkan dan diuji saat setup Fase 1):**
+1. `middleware.ts` kini bernama **`proxy.ts`** (fungsi `proxy`). Logika sesi ada di `lib/supabase/middleware.ts` (`updateSession`) dan dipanggil dari `proxy.ts` di root. Perilaku diuji pada build produksi: tanpa sesi, `/` dan `/album/x` dialihkan 307 ke `/masuk`, `/masuk` 200, dan `/api/*` 401 JSON.
+2. Scaffold mengaktifkan **Cache Components**: akses data runtime (`cookies()`, `params`) harus berada di dalam `<Suspense>`, kalau tidak build gagal ("blocking-prerender-dynamic"). Karena itu `app/(app)/loading.tsx` menjadi boundary untuk seluruh halaman area login.
+3. Cache Components tidak mendukung `export const runtime`, jadi kerangka Route Handler (§6.4) tidak memakainya; Node.js sudah default.
+4. `params` adalah Promise (`await params`), dan `cookies()` bersifat async.
+5. `app/(auth)/masuk` berada di luar grup `(app)`, sehingga tidak memakai layout pemutar.
 
 **Aturan penting:** `PlayerBar` dan `PlayerBoot` ada di `app/(app)/layout.tsx`, **bukan** di `template.tsx` (template di-*remount* tiap navigasi) dan tidak diberi `key` yang berubah.
 
@@ -354,7 +361,7 @@ Logika murni ada di `lib/audio/mp3.ts` (**Lampiran B**, sudah diuji). Handler:
 // app/api/uploads/[id]/finalize/route.ts
 import 'server-only';
 import { checkMp3, checkImage, LIMITS } from '@/lib/audio/mp3';
-export const runtime = 'nodejs';
+// Cache Components (Next.js 16) tidak mendukung `export const runtime`; Node.js sudah menjadi default.
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
