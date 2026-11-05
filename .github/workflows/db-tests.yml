@@ -1,0 +1,61 @@
+name: db-tests
+
+# Spike S6 (docs/architecture.md, 14.1): seluruh uji SQL dan konkurensi dijalankan terhadap Supabase CLI
+# sungguhan (supabase start + db reset), bukan Postgres tiruan. Runner ubuntu-latest sudah memiliki Docker.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sql:
+    name: SQL dan konkurensi (Supabase CLI)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Hanya layanan yang dibutuhkan uji: db, auth (skema auth), storage (skema storage), postgrest/kong.
+      - name: supabase start
+        run: supabase start -x realtime,imgproxy,mailpit,studio,edge-runtime,logflare,vector,supavisor,postgres-meta
+
+      - name: supabase db reset (menerapkan semua migrasi)
+        run: supabase db reset
+
+      - name: Uji SQL
+        run: |
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f supabase/tests/sql/helpers.sql
+          psql "$PGURL" -q -f supabase/tests/sql/rls_and_limits.test.sql > test.out 2>&1 || true
+          grep -E "NOTICE:  PASS|WARNING:  FAIL|ERROR:" test.out || true
+          pass=$(grep -c "NOTICE:  PASS" test.out || true)
+          fail=$(grep -c "WARNING:  FAIL" test.out || true)
+          err=$(grep -c "ERROR:" test.out || true)
+          echo "PASS=$pass FAIL=$fail ERROR=$err"
+          # gagal bila ada FAIL atau ERROR, atau bila jumlah PASS menyusut (uji terlewat diam-diam)
+          [ "$fail" = 0 ] && [ "$err" = 0 ] && [ "$pass" -ge 90 ]
+
+      - name: Uji konkurensi
+        run: bash supabase/tests/concurrency.sh
+
+      - name: Diagnosa (hanya bila gagal)
+        if: failure()
+        run: |
+          supabase status || true
+          docker ps -a || true
+          docker logs supabase_db_streaming 2>&1 | tail -80 || true
+
+      - name: supabase stop
+        if: always()
+        run: supabase stop --no-backup

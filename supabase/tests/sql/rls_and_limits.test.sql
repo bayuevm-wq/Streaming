@@ -175,7 +175,7 @@ select t.err('T10c klien tak bisa UPDATE profiles langsung', format($f$update pu
 select t.logout();
 
 \echo == T11 claim user tidak aktif (tombstone) ==
-insert into auth.sessions (user_id) values (:D), (:E);
+insert into auth.sessions (id, user_id) values (gen_random_uuid(), :D), (gen_random_uuid(), :E);
 update public.profiles set last_seen_at = now() - interval '8 days' where user_id in (:D, :E);
 select t.as_service();
 select t.check('T11a hanya user ANONIM tak aktif yang diklaim', (select array_agg(x) from public.claim_inactive_anonymous_users() x) = array[:D::uuid]);
