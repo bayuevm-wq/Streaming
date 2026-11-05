@@ -75,6 +75,21 @@ jobs:
           npm run test:audio
           npm run test:seed
 
+      # F20: skrip keep-alive yang SAMA dengan yang dipakai workflow harian, diuji terhadap ping() asli.
+      - name: Uji keep-alive
+        run: |
+          eval "$(supabase status -o env | sed 's/^/export /')"
+          # 1) berhasil terhadap ping() asli (format respons "ok": true dari PostgREST)
+          SUPABASE_URL="$API_URL" SUPABASE_ANON_KEY="${ANON_KEY:-${PUBLISHABLE_KEY:-}}" bash scripts/keepalive.sh | tee ping.out
+          grep -q '"ok"' ping.out
+          # 2) secret belum diatur: lewati tanpa error
+          env -u SUPABASE_URL -u SUPABASE_ANON_KEY bash scripts/keepalive.sh | grep -q "dilewati"
+          # 3) kunci salah: HARUS gagal (non-zero), bukan lolos diam-diam
+          if SUPABASE_URL="$API_URL" SUPABASE_ANON_KEY="kunci-salah" bash scripts/keepalive.sh; then
+            echo "keep-alive dengan kunci salah seharusnya gagal"; exit 1
+          fi
+          echo "keep-alive: 3 skenario sesuai harapan"
+
       # F9: seed berkas sintetis ke bucket publik, idempoten, dan klien tak bisa menulis katalog.
       - name: Uji integrasi seed
         run: |

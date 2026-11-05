@@ -1,0 +1,29 @@
+name: keepalive
+
+# Proyek Supabase Free di-pause bila aktivitas database rendah selama 7 hari (spec F20).
+# Memanggil RPC ping() yang hanya-baca tetapi benar-benar membaca tabel. Logika ada di scripts/keepalive.sh.
+# Secret repositori yang dibutuhkan: SUPABASE_URL dan SUPABASE_ANON_KEY (anon key, BUKAN service role).
+# Bila belum diatur, langkahnya lewat dengan pemberitahuan (bukan gagal).
+on:
+  schedule:
+    - cron: "17 6 * * *" # harian 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Panggil ping()
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: bash scripts/keepalive.sh

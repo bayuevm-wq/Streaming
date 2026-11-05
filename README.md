@@ -34,3 +34,7 @@ Setiap lagu seed dicatat sumber dan lisensinya di bawah (dihasilkan `node script
 <!-- seed-sources:start -->
 _Katalog belum diisi._
 <!-- seed-sources:end -->
+
+## Keep-alive
+
+Proyek Supabase Free di-pause bila aktivitas database rendah selama 7 hari. Workflow [`keepalive`](.github/workflows/keepalive.yml) memanggil RPC `ping()` tiap hari. Isi secret repositori `SUPABASE_URL` dan `SUPABASE_ANON_KEY` (anon key, bukan service role); selama belum diisi, workflow hanya memberi pemberitahuan. GitHub dapat menonaktifkan workflow terjadwal pada repositori publik yang lama tidak aktif; jalankan manual lewat tab Actions (`workflow_dispatch`) bila ada email peringatan pause dari Supabase.
