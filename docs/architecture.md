@@ -2,7 +2,9 @@
 
 **Status:** Draft v1 · **Tanggal:** 2026-11-05 · **Sumber:** [`docs/spec.md`](./spec.md) · **Stack:** Next.js (App Router) + Tailwind + Supabase (Postgres, Auth, Storage, Edge Functions) + Zustand
 
-> **Yang sudah dan belum diverifikasi.** SQL migrasi 0001–0004 dan modul `mp3.ts` sudah dijalankan: **82 uji SQL lulus** di PostgreSQL 18 lokal dengan **tiruan** minimal skema `auth`/`storage` Supabase, uji konkurensi untuk tiga batas (kuota lagu, 20 playlist, penyimpanan global) lulus dan terbukti sensitif lewat kontrol tanpa kunci (§7), dan unit test `mp3.ts` lulus. Semua uji kini ada di repo: `supabase/tests/` dan `lib/audio/`. **Belum diuji:** Supabase sungguhan (Auth anonim, Storage/TUS, pembacaan Range), `pg_cron`/`pg_net`/Vault (0005), Edge Function `cleanup`, workflow keep-alive, kode Next.js, dan render diagram Mermaid. **Di Fase 1 seluruh uji SQL wajib dijalankan ulang di Supabase CLI lokal (`supabase start`), bukan Postgres tiruan** (spike S6, §14.1).
+> **Yang sudah dan belum diverifikasi.** Berkas migrasi `supabase/migrations/0001`–`0004` (dijalankan dari berkas itu oleh `run-mock.sh`) dan modul `mp3.ts` sudah dijalankan: **90 uji SQL lulus** di PostgreSQL 18 lokal dengan **tiruan** minimal skema `auth`/`storage` Supabase, uji konkurensi untuk tiga batas (kuota lagu, 20 playlist, penyimpanan global) lulus dan terbukti sensitif lewat kontrol tanpa kunci (§7), dan unit test `mp3.ts` lulus. Semua uji kini ada di repo: `supabase/tests/` dan `lib/audio/`. **Belum diuji:** Supabase sungguhan (Auth anonim, Storage/TUS, pembacaan Range), `pg_cron`/`pg_net`/Vault (0005), Edge Function `cleanup`, workflow keep-alive, kode Next.js, dan render diagram Mermaid. **Di Fase 1 seluruh uji SQL wajib dijalankan ulang di Supabase CLI lokal (`supabase start`), bukan Postgres tiruan** (spike S6, §14.1).
+
+> **Sumber kebenaran SQL dan kode.** SQL lengkap hanya ada di [`supabase/migrations/`](../supabase/migrations/) dan validator MP3 hanya di [`lib/audio/mp3.ts`](../lib/audio/mp3.ts); Lampiran A dan B cuma daftar berkas. Kutipan SQL dalam badan dokumen ini **dihasilkan dari berkas migrasi saat dokumen disusun** dan hanya untuk dibaca; bila berbeda dengan berkas migrasi, berkas migrasilah yang benar.
 
 ---
 
@@ -22,7 +24,7 @@ Arsitektur ini menaruh **semua aturan penting di database dan Storage (RLS, trig
 2. **Baris dulu, file kemudian.** Setiap objek di bucket pribadi selalu punya baris `songs` sejak sebelum file ada, sehingga tidak ada file yatim akibat upload yang terputus.
 3. **Tidak ada yang bisa membaca file yang belum divalidasi.** Policy baca mensyaratkan baris `ready`.
 4. **Service role hanya di server** dan hanya untuk tiga hal: `finalize`, penghapusan lagu, dan job/seed.
-5. **Satu sumber kebenaran waktu:** `now()` di database, bukan jam klien.
+5. **Satu sumber kebenaran waktu:** `now()` di database, bukan jam klien atau jam Node. Kedaluwarsa reservasi diputuskan `finalize_upload`, dan penolakan reservasi dilakukan `reject_upload`, bukan perbandingan tanggal di Route Handler.
 
 ---
 
@@ -111,10 +113,10 @@ lib/
   audio/mp3.test.ts                # sudah ada di repo
   audio/mp3.ts                     # validator murni (Lampiran B) — dipakai handler, seed, unit test
 supabase/
-  migrations/0001..0005_*.sql      # Lampiran A
+  migrations/0001_schema.sql .. 0005_cron.sql   # sudah ada di repo (Lampiran A)
   functions/cleanup/index.ts
   tests/sql/helpers.sql            # sudah ada di repo
-  tests/sql/rls_and_limits.test.sql  # 82 uji; dijalankan ulang di `supabase start` (spike S6)
+  tests/sql/rls_and_limits.test.sql  # 90 uji; dijalankan ulang di `supabase start` (spike S6)
   tests/concurrency.sh             # balapan: kuota lagu, 20 playlist, batas global
   tests/mock/{stub.sql,run-mock.sh}  # hanya untuk lingkungan tanpa Docker
 scripts/seed.ts  scripts/seed/catalog.json
@@ -312,11 +314,11 @@ sequenceDiagram
     H->>S: signed URL 60 dtk, GET Range 0..64 KiB
     H->>H: checkMp3 (ukuran, MIME, ID3, 3 frame beruntun)
     alt valid
-      H->>D: rpc finalize_upload (service role): ready, expires_at +24 jam
-      H-->>B: 200 dan durasi
+      H->>D: rpc finalize_upload (service role): periksa expires_at > now(), lalu ready, expires_at +24 jam
+      H-->>B: 200 dan durasi, atau 410 bila reservasi sudah kedaluwarsa menurut database
     else tidak valid
       H->>S: hapus objek
-      H->>D: tandai kedaluwarsa
+      H->>D: rpc reject_upload (service role): expires_at = now() di database
       H-->>B: 422 dan alasan
     end
   end
@@ -325,9 +327,9 @@ sequenceDiagram
 Langkah demi langkah:
 
 1. **Reserve** — `rpc('reserve_upload', …)` membuat baris `songs` (`pending`, `expires_at = now() + 15 menit`) dengan path deterministik `{uid}/{song_id}.mp3` (dan `.jpg|.png|.webp` untuk cover). Trigger kuota berjalan di sini (§7). Bila kuota penuh, error `quota_exceeded` dan **tidak ada file yang boleh diunggah**.
-2. **Upload** — browser mengunggah ke path itu. Policy Storage mengizinkan INSERT hanya bila `owns_pending_object(bucket, name)` benar. Bucket memaksa `file_size_limit = 10 MiB`. Selama `pending`, tidak ada policy SELECT, jadi tidak ada yang dapat membaca file itu, termasuk pemiliknya.
-3. **Verify** — `POST /api/uploads/:id/finalize` (lihat kode di bawah). Handler memastikan pemanggil adalah pemilik baris `pending` yang belum kedaluwarsa, lalu memeriksa isi file.
-4. **Publish** — `finalize_upload` (hanya service role) mengubah baris menjadi `ready` dan menetapkan `expires_at = now() + 24 jam`. Hanya sejak saat itu RLS dan policy Storage mengizinkan pemilik membaca.
+2. **Upload** — browser mengunggah ke path itu dengan **`contentType` yang dipaksa** (lihat §6.6). Policy Storage mengizinkan INSERT hanya bila `owns_pending_object(bucket, name)` benar. Bucket memaksa `file_size_limit = 10 MiB`. Selama `pending`, tidak ada policy SELECT, jadi tidak ada yang dapat membaca file itu, termasuk pemiliknya.
+3. **Verify** — `POST /api/uploads/:id/finalize` (lihat kode di bawah). Handler memastikan pemanggil adalah pemilik baris `pending`, lalu memeriksa isi file. **Handler tidak membandingkan waktu sama sekali**: apakah reservasi sudah kedaluwarsa diputuskan `finalize_upload` dengan `now()` database.
+4. **Publish** — `finalize_upload` (hanya service role) menolak dengan `reservation_expired` bila `expires_at <= now()`, selain itu mengubah baris menjadi `ready` dan menetapkan `expires_at = now() + 24 jam`. Hanya sejak saat itu RLS dan policy Storage mengizinkan pemilik membaca.
 
 ### 6.3 Lapisan pertahanan
 
@@ -361,11 +363,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const db = adminClient();                         // service role, hanya di server
 
   const { data: song } = await db.from('songs')
-    .select('id,status,audio_path,cover_path,expires_at')
+    .select('id,owner_id,status,audio_path,cover_path')
     .eq('id', id).eq('owner_id', user.id).eq('visibility', 'private').maybeSingle();
   if (!song) return fail(404, 'not_found');
   if (song.status === 'ready') return ok();                                  // idempoten
-  if (new Date(song.expires_at) <= new Date()) return fail(410, 'reservation_expired');
+  // Tidak ada pemeriksaan waktu di sini: kedaluwarsa diputuskan finalize_upload dengan now() database.
 
   const audio = await readRange(db, 'user-audio', song.audio_path, 0, LIMITS.headBytes);
   if (!audio) return fail(409, 'upload_incomplete');                         // belum selesai diunggah
@@ -386,7 +388,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   const { error } = await db.rpc('finalize_upload', {
     p_song_id: id, p_user_id: user.id, p_duration_sec: v.durationSec, p_size_bytes: audio.total });
-  return error ? fail(409, 'reservation_invalid') : ok({ durationSec: v.durationSec });
+  if (error?.code === 'P0003') return fail(410, 'reservation_expired');     // reservation_expired dari database
+  if (error) return fail(409, 'reservation_invalid');
+  return ok({ durationSec: v.durationSec });
 }
 
 async function readRange(db: Admin, bucket: string, path: string, from: number, len: number) {
@@ -401,7 +405,7 @@ async function readRange(db: Admin, bucket: string, path: string, from: number, 
 }
 
 async function reject(db: Admin, song: SongRow, reason: string) {
-  await db.from('songs').update({ expires_at: new Date().toISOString() }).eq('id', song.id); // slot bebas
+  await db.rpc('reject_upload', { p_song_id: song.id, p_user_id: song.owner_id });  // expires_at = now() DI DATABASE; slot bebas
   await db.storage.from('user-audio').remove([song.audio_path]);
   if (song.cover_path) await db.storage.from('user-covers').remove([song.cover_path]);
   return fail(422, reason);          // sisa baris dibersihkan job per jam
@@ -414,11 +418,31 @@ async function reject(db: Admin, song: SongRow, reason: string) {
 |---|---|
 | `finalize` dipanggil sebelum upload selesai | 409 `upload_incomplete`; klien boleh mencoba lagi selama TTL |
 | File bukan MP3 / terlalu besar / MIME salah | 422 + alasan; objek dihapus; slot bebas |
-| Reservasi lewat 15 menit | 410; baris dan file dibersihkan job |
+| Reservasi lewat 15 menit | `finalize_upload` melempar `reservation_expired` (SQLSTATE `P0003`, jam database) → 410; baris dan file dibersihkan job. Bila file sudah terlanjur dipurge, `finalize` melihatnya sebagai 409 `upload_incomplete`; klien yang masih menerima 409 setelah 15 menit memulai ulang dengan `reserve_upload` baru |
+| Reservasi ditolak (`reject_upload`) lalu `finalize` dipanggil lagi | 410 `reservation_expired` (barisnya `pending` dengan `expires_at <= now()`) |
 | `finalize` dipanggil dua kali | Idempoten (sudah `ready` → 200) |
 | Tab ditutup di tengah upload | Baris `pending` kedaluwarsa sendiri dan dipurge job; tak pernah terlihat |
 | Klien mengunggah lalu **tidak** memanggil `finalize` | File tak terbaca siapa pun; dipurge job |
 | Percobaan overwrite objek setelah `ready` | Ditolak policy (uji T8i) |
+
+### 6.6 Catatan klien `/unggah`: paksa `contentType`
+
+Sebagian browser/OS melaporkan MP3 sebagai `audio/mp3` atau `audio/x-mp3`, bukan `audio/mpeg`, dan nilai itu akan ditolak `allowed_mime_types` bucket (`audio/mpeg` saja). Karena itu klien **tidak boleh mengandalkan `file.type`**: untuk file berekstensi `.mp3` (tanpa memandang huruf besar/kecil) `contentType` dipaksa menjadi `audio/mpeg`, dan cover dipetakan dari ekstensinya.
+
+```ts
+const MIME = { mp3: 'audio/mpeg', jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp' } as const;
+
+new tus.Upload(file, {
+  endpoint: `${SUPABASE_URL}/storage/v1/upload/resumable`,
+  headers: { authorization: `Bearer ${accessToken}` },
+  metadata: { bucketName: 'user-audio', objectName: audioPath,
+              contentType: MIME.mp3,            // BUKAN file.type
+              cacheControl: '3600' },
+  // …
+});
+```
+
+Ini tidak melemahkan keamanan: `contentType` memang hanya klaim klien (§6.3 L1) dan keputusan sebenarnya ada pada pemeriksaan isi di `finalize`; `finalize` tetap menolak bila `Content-Type` tersimpan bukan `audio/mpeg`. Ekstensi selain `.mp3` ditolak di klien sebelum `reserve_upload`. Nama metadata TUS dan perilakunya diverifikasi di spike S2.
 
 ---
 
@@ -875,7 +899,7 @@ Catatan:
 
 | Area | Cara | Status |
 |---|---|---|
-| RLS, policy Storage, trigger, RPC, tombstone, orphan, lease, cascade, batas playlist/penyimpanan, `ping` | `supabase/tests/sql/` (82 uji) via `supabase/tests/mock/run-mock.sh` di PostgreSQL 18 dengan **tiruan** skema Supabase | **Lulus** (lokal, tiruan) |
+| RLS, policy Storage, trigger, RPC, tombstone, orphan, lease, cascade, batas playlist/penyimpanan, `ping` | `supabase/tests/sql/` (90 uji) via `supabase/tests/mock/run-mock.sh` di PostgreSQL 18 dengan **tiruan** skema Supabase | **Lulus** (lokal, tiruan) |
 | Konkurensi: kuota lagu, 20 playlist, penyimpanan global | `supabase/tests/concurrency.sh`; kontrol tanpa kunci membuktikan sensitivitas | **Lulus** (3/3/3, 20, 1 vs kontrol 10/10/10, 30, 2) |
 | Validator MP3 | `node lib/audio/mp3.test.ts`: CBR, ID3, Xing, ID3 besar (jendela kedua), WAV, byte acak, Layer II, 1 frame di tengah sampah, ukuran | **Lulus** |
 | **Semua uji SQL dan konkurensi di Supabase CLI lokal** (`supabase start`, DB di port 54322) | Jalankan `psql -f helpers.sql -f rls_and_limits.test.sql` dan `PGURL=… concurrency.sh` terhadap migrasi asli, **tanpa tiruan**; lalu port ke pgTAP (`supabase test db`) untuk CI | **Wajib di Fase 1 (spike S6)** |
@@ -973,6 +997,8 @@ S6 adalah syarat keluar Fase 1: tanpa itu, klaim "terverifikasi" di dokumen ini 
 | File lagu pribadi masih ada di Storage hingga ±75 menit setelah kedaluwarsa (15 menit jeda + siklus per jam) | Tak terbaca lewat RLS; hanya signed URL yang sudah terbit (≤ 1 jam) yang bisa membukanya |
 | Job gagal diam-diam | `job_leases.last_result` + pantau `failed`; tambah notifikasi bila perlu |
 | Polyglot MP3 | Diterima untuk MVP (§6.3) |
+| `playlist_songs.position` adalah kolom `GENERATED ALWAYS AS IDENTITY`: nilainya tak bisa diubah atau disisipkan. Mengurutkan ulang lagu **di dalam playlist** (drag-reorder) tidak mungkin tanpa migrasi, dan RLS belum punya policy UPDATE untuk tabel itu | Saat fitur itu dikerjakan: migrasi yang mengganti kolom menjadi nilai biasa yang bisa diatur (mis. `numeric` dengan indeks pecahan, atau `integer` yang dinomori ulang dalam satu transaksi) + policy UPDATE milik pemilik playlist + pembaruan trigger batas 200. **Catatan cakupan:** F10 di spec hanya mencakup antrean pemutar, yang berupa state klien (Zustand) dan **tidak** menyentuh `position`; mengurutkan ulang *playlist* belum ada sebagai butir spec. |
+| Pembersihan memakai jam Edge Function untuk batas jeda 15 menit (`Date.now()` di §8.4), bukan `now()` database | Dapat diterima karena jeda hanya pelonggaran lunak (selisih detik tak berdampak); bila ingin konsisten penuh, ganti dengan RPC yang memilih lagu `expires_at <= now() - interval '15 minutes'` |
 
 ### 14.3 Perubahan terhadap spec (disetujui pemilik proyek; tercatat di spec §10, keputusan 12–15)
 
@@ -985,7 +1011,7 @@ S6 adalah syarat keluar Fase 1: tanpa itu, klaim "terverifikasi" di dokumen ini 
 7. **Batas tambahan, disetujui dengan angka:** penyimpanan pribadi global **500 MB** (upload ditutup sementara bila penuh), **20 playlist** per user, **200 lagu** per playlist, semuanya di trigger (§7.4).
 8. **Keep-alive harian** karena kebijakan pause proyek Free berlaku (§13.2).
 
-Item 5 dan 6 saya perlakukan sebagai konsekuensi langsung dari item 1 dan 4 serta keputusan "MP3 saja untuk pengunjung"; koreksi bila tidak demikian.
+Item 5 dan 6 disetujui sebagai konsekuensi dari item 1 dan 4 serta keputusan "MP3 saja untuk pengunjung". Hitungan 200 lagu per playlist yang ikut menghitung baris lagu pribadi kedaluwarsa (paling lama ±75 menit) juga disetujui.
 
 ### 14.4 Pertanyaan terbuka
 
@@ -1011,737 +1037,18 @@ Pertanyaan lama tentang batas penyimpanan global, batas playlist, dan konfirmasi
 
 ---
 
-## Lampiran A — Migrasi SQL
+## Lampiran A — Berkas migrasi SQL
 
-Seluruh berkas 0001–0004 sudah dijalankan berurutan di PostgreSQL 18 (dengan tiruan `auth`/`storage`); 0005 belum diuji.
+SQL lengkap **hanya** ada di berkas berikut (satu salinan, agar dokumen dan kode tidak bisa berbeda). Berkas 0001–0004 sudah dijalankan berurutan dari sini di PostgreSQL 18 dengan tiruan `auth`/`storage` (`supabase/tests/mock/run-mock.sh`); 0005 belum diuji.
 
-### `0001_schema`
+| Berkas | Isi |
+|---|---|
+| [`0001_schema.sql`](../supabase/migrations/0001_schema.sql) | Tabel, constraint, indeks, `app_limits` |
+| [`0002_functions.sql`](../supabase/migrations/0002_functions.sql) | Trigger (profiles, kuota, batas playlist), RPC upload (`reserve_upload`, `finalize_upload`, `reject_upload`, `expire_my_song`), `search_all`, `ping`, `get_upload_status`, fungsi job (`claim_inactive_anonymous_users`, `list_orphan_objects`, lease), hak eksekusi |
+| [`0003_rls.sql`](../supabase/migrations/0003_rls.sql) | RLS, grant tabel, policy |
+| [`0004_storage.sql`](../supabase/migrations/0004_storage.sql) | Bucket dan policy Storage, `owns_pending_object` |
+| [`0005_cron.sql`](../supabase/migrations/0005_cron.sql) | Jadwal `pg_cron` + `pg_net` ke Edge Function (butuh proyek hosted; belum diuji) |
 
-<details>
-<summary>Tampilkan SQL</summary>
+## Lampiran B — Validator MP3
 
-```sql
--- 0001_schema.sql — tabel, constraint, indeks
-create extension if not exists pg_trgm with schema extensions;
-
--- Satu baris per user (anonim maupun terdaftar). Dibuat oleh trigger (lihat 0002).
-create table public.profiles (
-  user_id      uuid primary key references auth.users (id) on delete cascade,
-  status       text not null default 'active' check (status in ('active', 'deleting')),
-  last_seen_at timestamptz not null default now(),
-  created_at   timestamptz not null default now()
-);
-create index profiles_inactive_idx on public.profiles (last_seen_at) where status = 'active';
-
-create table public.artists (
-  id         uuid primary key default gen_random_uuid(),
-  name       text not null check (char_length(btrim(name)) between 1 and 120),
-  name_key   text generated always as (lower(btrim(name))) stored,
-  image_path text,
-  created_at timestamptz not null default now(),
-  unique (name_key)
-);
-
-create table public.albums (
-  id         uuid primary key default gen_random_uuid(),
-  artist_id  uuid not null references public.artists (id) on delete cascade,
-  title      text not null check (char_length(btrim(title)) between 1 and 120),
-  title_key  text generated always as (lower(btrim(title))) stored,
-  cover_path text,
-  year       smallint check (year between 1900 and 2100),
-  created_at timestamptz not null default now(),
-  unique (artist_id, title_key)
-);
-
--- Satu tabel untuk lagu katalog (public) dan lagu pribadi (private).
-create table public.songs (
-  id          uuid primary key default gen_random_uuid(),
-  visibility  text not null check (visibility in ('public', 'private')),
-  status      text not null default 'ready' check (status in ('pending', 'ready')),
-  owner_id    uuid references auth.users (id) on delete cascade,
-  seed_key    text unique,                       -- kunci idempotensi skrip seed
-  title       text not null check (char_length(btrim(title)) between 1 and 120),
-  artist_id   uuid references public.artists (id) on delete restrict,
-  album_id    uuid references public.albums (id) on delete set null,
-  track_no    smallint,
-  artist_name text check (char_length(btrim(artist_name)) between 1 and 120),
-  album_name  text check (char_length(album_name) <= 120),
-  audio_path  text not null,                     -- relatif terhadap bucket
-  cover_path  text,
-  duration_sec integer check (duration_sec between 1 and 7200),
-  size_bytes  bigint check (size_bytes > 0),
-  expires_at  timestamptz,
-  created_at  timestamptz not null default now(),
-  constraint songs_shape check (
-    (visibility = 'public' and status = 'ready' and owner_id is null and expires_at is null
-       and artist_id is not null and duration_sec is not null)
-    or
-    (visibility = 'private' and owner_id is not null and expires_at is not null
-       and artist_name is not null and artist_id is null and album_id is null
-       and (status = 'pending' or duration_sec is not null))
-  )
-);
-create unique index songs_audio_path_uq     on public.songs (audio_path);
-create index songs_public_recent_idx        on public.songs (created_at desc) where visibility = 'public';
-create index songs_artist_idx               on public.songs (artist_id) where artist_id is not null;
-create index songs_album_idx                on public.songs (album_id, track_no) where album_id is not null;
-create index songs_owner_live_idx           on public.songs (owner_id, expires_at) where visibility = 'private';
-create index songs_expiry_idx               on public.songs (expires_at) where visibility = 'private';
-create index songs_title_trgm               on public.songs using gin (title extensions.gin_trgm_ops);
-create index artists_name_trgm              on public.artists using gin (name extensions.gin_trgm_ops);
-create index albums_title_trgm              on public.albums using gin (title extensions.gin_trgm_ops);
-
-create table public.likes (
-  user_id    uuid not null references auth.users (id) on delete cascade,
-  song_id    uuid not null references public.songs (id) on delete cascade,
-  created_at timestamptz not null default now(),
-  primary key (user_id, song_id)
-);
-create index likes_song_idx on public.likes (song_id);
-
-create table public.playlists (
-  id          uuid primary key default gen_random_uuid(),
-  user_id     uuid not null references auth.users (id) on delete cascade,
-  name        text not null check (name = btrim(name) and char_length(name) between 1 and 60),
-  description text check (char_length(description) <= 300),
-  created_at  timestamptz not null default now()
-);
-create index playlists_user_idx on public.playlists (user_id, created_at desc);
-
-create table public.playlist_songs (
-  playlist_id uuid not null references public.playlists (id) on delete cascade,
-  song_id     uuid not null references public.songs (id) on delete cascade,
-  position    bigint generated always as identity,
-  added_at    timestamptz not null default now(),
-  primary key (playlist_id, song_id)
-);
-create index playlist_songs_order_idx on public.playlist_songs (playlist_id, position);
-create index playlist_songs_song_idx  on public.playlist_songs (song_id);
-
--- Batas global yang bisa diubah pemilik proyek lewat SQL (singleton: tepat satu baris).
-create table public.app_limits (
-  id                        boolean primary key default true check (id),
-  private_storage_cap_bytes bigint not null default 524288000 check (private_storage_cap_bytes > 0)  -- 500 MB
-);
-insert into public.app_limits default values;
-
--- Lease agar job pembersih tidak berjalan tumpang tindih; juga log hasil terakhir.
-create table public.job_leases (
-  name         text primary key,
-  locked_until timestamptz not null default 'epoch',
-  last_run_at  timestamptz,
-  last_result  jsonb
-);
-```
-
-</details>
-
-### `0002_functions`
-
-<details>
-<summary>Tampilkan SQL</summary>
-
-```sql
--- 0002_functions.sql — trigger, RPC, fungsi pendukung job
--- Semua fungsi SECURITY DEFINER memakai search_path kosong, jadi semua objek ditulis dengan nama skema.
-
--- (d) Baris profiles dibuat otomatis setiap ada baris baru di auth.users.
--- Sign-in anonim Supabase juga meng-INSERT ke auth.users (is_anonymous = true), jadi trigger ini menangkapnya.
--- Dibuat sesederhana mungkin: trigger yang melempar error akan menggagalkan sign-in.
-create or replace function public.handle_new_user()
-returns trigger language plpgsql security definer set search_path = '' as $$
-begin
-  insert into public.profiles (user_id) values (new.id)
-  on conflict (user_id) do nothing;
-  return new;
-end $$;
-
-create trigger on_auth_user_created
-after insert on auth.users
-for each row execute function public.handle_new_user();
-
--- last_seen_at: maksimal 1x per jam, dibatasi DI SQL (klien yang nakal pun tidak bisa menulis lebih sering).
--- Sekaligus "self-heal" bila baris profiles belum ada.
-create or replace function public.touch_last_seen()
-returns void language sql security definer set search_path = '' as $$
-  insert into public.profiles as p (user_id) values ((select auth.uid()))
-  on conflict (user_id) do update set last_seen_at = now()
-  where p.status = 'active' and p.last_seen_at < now() - interval '1 hour';
-$$;
-
--- (b) Kuota 3 lagu aktif per akun. Berlaku untuk SETIAP INSERT lagu pribadi, dari jalur mana pun.
--- Kunci: SELECT ... FOR UPDATE pada baris profiles milik user. Transaksi kedua untuk user yang sama
--- menunggu sampai transaksi pertama commit, lalu menghitung dengan snapshot baru (READ COMMITTED),
--- sehingga melihat baris yang baru di-insert transaksi pertama.
-create or replace function public.enforce_private_song_quota()
-returns trigger language plpgsql security definer set search_path = '' as $$
-declare
-  v_active integer;
-  v_used   bigint;
-  v_cap    bigint;
-begin
-  insert into public.profiles (user_id) values (new.owner_id) on conflict (user_id) do nothing;
-
-  perform 1 from public.profiles
-   where user_id = new.owner_id and status = 'active'
-   for update;
-  if not found then
-    raise exception 'account_not_active' using errcode = 'P0001';
-  end if;
-
-  select count(*) into v_active
-    from public.songs
-   where owner_id = new.owner_id and visibility = 'private' and expires_at > now();
-
-  if v_active >= 3 then
-    raise exception 'quota_exceeded' using errcode = 'P0001', hint = 'maks 3 lagu pribadi aktif';
-  end if;
-
-  -- Batas penyimpanan pribadi GLOBAL. Kunci kedua (baris singleton) diambil SETELAH kunci profil; urutan
-  -- profil -> global selalu sama, jadi tidak ada deadlock. Semua baris lagu pribadi yang masih ada dihitung,
-  -- termasuk yang sudah kedaluwarsa tetapi belum dipurge (file fisiknya masih ada). Reservasi tanpa ukuran
-  -- (pending) dihitung 10 MiB, batas maksimum per file. Hanya byte audio; cover (maks 2 MiB) tidak dihitung.
-  select private_storage_cap_bytes into v_cap from public.app_limits for update;
-  select coalesce(sum(coalesce(size_bytes, 10485760)), 0) into v_used
-    from public.songs where visibility = 'private';
-  if v_used + 10485760 > v_cap then
-    raise exception 'storage_full' using errcode = 'P0001', hint = 'upload pengunjung ditutup sementara';
-  end if;
-  return new;
-end $$;
-
-create trigger songs_private_quota
-before insert on public.songs
-for each row when (new.visibility = 'private')
-execute function public.enforce_private_song_quota();
-
--- Status untuk UI: slot terpakai dan apakah upload sedang dibuka (batas global belum penuh).
-create or replace function public.get_upload_status()
-returns jsonb language sql stable security definer set search_path = '' as $$
-  select jsonb_build_object(
-    'active', (select count(*) from public.songs
-                where owner_id = (select auth.uid()) and visibility = 'private' and expires_at > now()),
-    'max', 3,
-    'storage_open', (select coalesce(sum(coalesce(size_bytes, 10485760)), 0) + 10485760
-                            <= (select private_storage_cap_bytes from public.app_limits)
-                       from public.songs where visibility = 'private'));
-$$;
-
--- Batas playlist: maks 20 per user dan 200 lagu per playlist. Pola kuncinya sama dengan kuota lagu:
--- kunci baris induk (profil / playlist) sebelum menghitung. Bila baris bukan milik pemanggil, trigger
--- tidak mengunci apa pun dan membiarkan RLS yang menolak (agar user tak bisa mengunci baris orang lain).
-create or replace function public.enforce_playlist_limit()
-returns trigger language plpgsql security definer set search_path = '' as $$
-declare
-  v_n integer;
-begin
-  if new.user_id is distinct from (select auth.uid()) then return new; end if;
-  insert into public.profiles (user_id) values (new.user_id) on conflict (user_id) do nothing;
-  perform 1 from public.profiles where user_id = new.user_id for update;
-  select count(*) into v_n from public.playlists where user_id = new.user_id;
-  if v_n >= 20 then
-    raise exception 'playlist_limit' using errcode = 'P0001', hint = 'maks 20 playlist';
-  end if;
-  return new;
-end $$;
-
-create trigger playlists_limit
-before insert on public.playlists
-for each row execute function public.enforce_playlist_limit();
-
-create or replace function public.enforce_playlist_song_limit()
-returns trigger language plpgsql security definer set search_path = '' as $$
-declare
-  v_n integer;
-begin
-  perform 1 from public.playlists
-   where id = new.playlist_id and user_id = (select auth.uid()) for update;
-  if not found then return new; end if;
-  select count(*) into v_n from public.playlist_songs where playlist_id = new.playlist_id;
-  if v_n >= 200 then
-    raise exception 'playlist_song_limit' using errcode = 'P0001', hint = 'maks 200 lagu per playlist';
-  end if;
-  return new;
-end $$;
-
-create trigger playlist_songs_limit
-before insert on public.playlist_songs
-for each row execute function public.enforce_playlist_song_limit();
-
--- Keep-alive: dipanggil GitHub Actions tiap hari. Hanya-baca, tanpa data sensitif, tetapi benar-benar
--- menyentuh tabel sehingga terhitung sebagai aktivitas database (proyek Free di-pause bila aktivitas rendah 7 hari).
-create or replace function public.ping()
-returns jsonb language sql stable security definer set search_path = '' as $$
-  select jsonb_build_object('ok', (select count(*) >= 0 from public.artists), 'ts', now());
-$$;
-
--- (a) Langkah 1 upload: memesan slot. Baris dibuat SEBELUM file ada (status 'pending', TTL 15 menit).
-create or replace function public.reserve_upload(
-  p_title text, p_artist_name text, p_album_name text default null, p_cover_ext text default null)
-returns jsonb language plpgsql security definer set search_path = '' as $$
-declare
-  v_uid   uuid := (select auth.uid());
-  v_id    uuid := gen_random_uuid();
-  v_audio text;
-  v_cover text;
-begin
-  if v_uid is null then
-    raise exception 'not_authenticated' using errcode = '28000';
-  end if;
-  if p_cover_ext is not null and p_cover_ext not in ('jpg', 'png', 'webp') then
-    raise exception 'bad_cover_ext' using errcode = '22023';
-  end if;
-
-  v_audio := v_uid::text || '/' || v_id::text || '.mp3';
-  v_cover := case when p_cover_ext is null then null
-                  else v_uid::text || '/' || v_id::text || '.' || p_cover_ext end;
-
-  insert into public.songs
-    (id, visibility, status, owner_id, title, artist_name, album_name, audio_path, cover_path, expires_at)
-  values
-    (v_id, 'private', 'pending', v_uid, btrim(p_title), btrim(p_artist_name),
-     nullif(btrim(coalesce(p_album_name, '')), ''), v_audio, v_cover, now() + interval '15 minutes');
-
-  return jsonb_build_object('song_id', v_id, 'audio_path', v_audio, 'cover_path', v_cover);
-end $$;
-
--- Batalkan reservasi / hapus lagu sendiri: langsung tak terlihat dan slot bebas (expires_at = now()).
--- File dan baris dibersihkan Route Handler (segera) atau job per jam (cadangan).
-create or replace function public.expire_my_song(p_song_id uuid)
-returns void language sql security definer set search_path = '' as $$
-  update public.songs set expires_at = now()
-   where id = p_song_id and owner_id = (select auth.uid()) and visibility = 'private';
-$$;
-
--- Langkah 3 upload: hanya bisa dipanggil service role SETELAH server memverifikasi isi file.
-create or replace function public.finalize_upload(
-  p_song_id uuid, p_user_id uuid, p_duration_sec integer, p_size_bytes bigint)
-returns void language plpgsql security definer set search_path = '' as $$
-begin
-  update public.songs
-     set status = 'ready', duration_sec = p_duration_sec, size_bytes = p_size_bytes,
-         expires_at = now() + interval '24 hours'
-   where id = p_song_id and owner_id = p_user_id
-     and visibility = 'private' and status = 'pending' and expires_at > now();
-  if not found then
-    if exists (select 1 from public.songs
-                where id = p_song_id and owner_id = p_user_id and status = 'ready') then
-      return;                                   -- idempoten
-    end if;
-    raise exception 'reservation_invalid' using errcode = 'P0002';
-  end if;
-end $$;
-
--- (c) Job F18, langkah 1 untuk user: "tombstone". Menandai user, mencabut sesinya, mengembalikan daftar id.
--- Kondisi tidak aktif dievaluasi ulang di dalam UPDATE yang sama (atomik); baris status 'deleting'
--- ikut dikembalikan lagi agar kegagalan hari sebelumnya dicoba ulang.
-create or replace function public.claim_inactive_anonymous_users(
-  p_inactive interval default interval '7 days', p_limit integer default 50)
-returns setof uuid language plpgsql security definer set search_path = '' as $$
-begin
-  return query
-  with picked as (
-    select p.user_id
-      from public.profiles p
-      join auth.users u on u.id = p.user_id
-     where u.is_anonymous
-       and (p.status = 'deleting'
-            or (p.status = 'active' and p.last_seen_at < now() - p_inactive))
-     order by p.last_seen_at
-     limit p_limit
-       for update of p skip locked
-  ), marked as (
-    update public.profiles p set status = 'deleting'
-      from picked where p.user_id = picked.user_id
-    returning p.user_id
-  ), revoked as (
-    delete from auth.sessions s using marked where s.user_id = marked.user_id
-    returning s.id
-  )
-  select marked.user_id from marked;
-end $$;
-
--- Objek Storage tanpa baris songs (kasus tak terduga). Dibaca lewat SQL, TETAPI dihapus lewat Storage API.
-create or replace function public.list_orphan_objects(
-  p_min_age interval default interval '1 day', p_limit integer default 500)
-returns table (bucket text, object_name text)
-language sql stable security definer set search_path = '' as $$
-  select o.bucket_id::text, o.name::text
-    from storage.objects o
-   where o.bucket_id in ('user-audio', 'user-covers')
-     and o.created_at < now() - p_min_age
-     and not exists (
-       select 1 from public.songs s
-        where (o.bucket_id = 'user-audio'  and s.audio_path = o.name)
-           or (o.bucket_id = 'user-covers' and s.cover_path = o.name))
-   limit p_limit;
-$$;
-
-create or replace function public.acquire_job_lease(p_name text, p_ttl interval)
-returns boolean language plpgsql security definer set search_path = '' as $$
-declare
-  v_rows integer;
-begin
-  -- Bila lease masih dipegang, WHERE pada DO UPDATE bernilai false => 0 baris tersentuh.
-  insert into public.job_leases as l (name, locked_until, last_run_at)
-  values (p_name, now() + p_ttl, now())
-  on conflict (name) do update
-    set locked_until = now() + p_ttl, last_run_at = now()
-    where l.locked_until < now();
-  get diagnostics v_rows = row_count;
-  return v_rows > 0;
-end $$;
-
-create or replace function public.release_job_lease(p_name text, p_result jsonb)
-returns void language sql security definer set search_path = '' as $$
-  update public.job_leases set locked_until = 'epoch', last_result = p_result where name = p_name;
-$$;
-
--- Pencarian: SECURITY INVOKER, jadi RLS berlaku (lagu publik + lagu pribadi MILIK SENDIRI yang belum kedaluwarsa).
--- Input di-escape untuk ILIKE dan dikirim sebagai parameter, bukan digabung ke string SQL.
-create or replace function public.search_all(p_q text, p_limit integer default 20)
-returns jsonb language sql stable security invoker set search_path = '' as $$
-  with q as (
-    select '%' || replace(replace(replace(btrim(left(coalesce(p_q, ''), 100)), '\', '\\'), '%', '\%'), '_', '\_') || '%' as pat,
-           btrim(left(coalesce(p_q, ''), 100)) <> '' as ok
-  )
-  select jsonb_build_object(
-    'songs', coalesce((
-      select jsonb_agg(to_jsonb(x)) from (
-        select s.id, s.title, s.visibility, s.audio_path, s.cover_path, s.duration_sec,
-               coalesce(a.name, s.artist_name) as artist, coalesce(al.title, s.album_name) as album
-          from public.songs s
-          left join public.artists a  on a.id  = s.artist_id
-          left join public.albums  al on al.id = s.album_id
-          cross join q
-         where q.ok and (s.title ilike q.pat or a.name ilike q.pat or al.title ilike q.pat
-                         or s.artist_name ilike q.pat or s.album_name ilike q.pat)
-         order by s.created_at desc limit least(p_limit, 50)) x), '[]'::jsonb),
-    'albums', coalesce((
-      select jsonb_agg(to_jsonb(x)) from (
-        select al.id, al.title, al.cover_path, a.name as artist
-          from public.albums al join public.artists a on a.id = al.artist_id
-          cross join q
-         where q.ok and (al.title ilike q.pat or a.name ilike q.pat)
-         order by al.title limit least(p_limit, 50)) x), '[]'::jsonb),
-    'artists', coalesce((
-      select jsonb_agg(to_jsonb(x)) from (
-        select a.id, a.name, a.image_path
-          from public.artists a cross join q
-         where q.ok and a.name ilike q.pat
-         order by a.name limit least(p_limit, 50)) x), '[]'::jsonb)
-  );
-$$;
-
--- Hak eksekusi: default Postgres/Supabase memberi EXECUTE ke PUBLIC dan anon, jadi dicabut eksplisit.
-revoke all on function public.handle_new_user()                                      from public, anon, authenticated;
-revoke all on function public.enforce_private_song_quota()                           from public, anon, authenticated;
-revoke all on function public.enforce_playlist_limit()                               from public, anon, authenticated;
-revoke all on function public.enforce_playlist_song_limit()                          from public, anon, authenticated;
-revoke all on function public.get_upload_status()                                    from public, anon;
-revoke all on function public.ping()                                                 from public;
-revoke all on function public.touch_last_seen()                                      from public, anon;
-revoke all on function public.reserve_upload(text, text, text, text)                 from public, anon;
-revoke all on function public.expire_my_song(uuid)                                   from public, anon;
-revoke all on function public.search_all(text, integer)                              from public, anon;
-revoke all on function public.finalize_upload(uuid, uuid, integer, bigint)           from public, anon, authenticated;
-revoke all on function public.claim_inactive_anonymous_users(interval, integer)      from public, anon, authenticated;
-revoke all on function public.list_orphan_objects(interval, integer)                 from public, anon, authenticated;
-revoke all on function public.acquire_job_lease(text, interval)                      from public, anon, authenticated;
-revoke all on function public.release_job_lease(text, jsonb)                         from public, anon, authenticated;
-
-grant execute on function public.touch_last_seen()                              to authenticated;
-grant execute on function public.get_upload_status()                            to authenticated;
-grant execute on function public.ping()                                         to anon, authenticated;
-grant execute on function public.reserve_upload(text, text, text, text)         to authenticated;
-grant execute on function public.expire_my_song(uuid)                           to authenticated;
-grant execute on function public.search_all(text, integer)                      to authenticated;
-grant execute on function public.finalize_upload(uuid, uuid, integer, bigint)   to service_role;
-grant execute on function public.claim_inactive_anonymous_users(interval, integer) to service_role;
-grant execute on function public.list_orphan_objects(interval, integer)         to service_role;
-grant execute on function public.acquire_job_lease(text, interval)              to service_role;
-grant execute on function public.release_job_lease(text, jsonb)                 to service_role;
-```
-
-</details>
-
-### `0003_rls`
-
-<details>
-<summary>Tampilkan SQL</summary>
-
-```sql
--- 0003_rls.sql — RLS dan grant tabel
-alter table public.profiles       enable row level security;
-alter table public.artists        enable row level security;
-alter table public.albums         enable row level security;
-alter table public.songs          enable row level security;
-alter table public.likes          enable row level security;
-alter table public.playlists      enable row level security;
-alter table public.playlist_songs enable row level security;
-alter table public.job_leases     enable row level security;
-alter table public.app_limits     enable row level security;
-
--- Default Supabase memberi hak luas ke anon/authenticated; cabut lalu beri minimum.
-revoke all on all tables in schema public from anon, authenticated;
-grant select                         on public.artists, public.albums, public.songs to authenticated;
-grant select, insert, delete         on public.likes          to authenticated;
-grant select, insert, update, delete on public.playlists      to authenticated;
-grant select, insert, delete         on public.playlist_songs to authenticated;
--- profiles, job_leases, app_limits: tanpa grant dan tanpa policy untuk klien (hanya fungsi SECURITY DEFINER / service role).
-
--- Catatan: "authenticated" mencakup user ANONIM (JWT mereka ber-role authenticated, is_anonymous = true).
--- Role "anon" hanya untuk permintaan tanpa sesi, dan tidak diberi akses apa pun.
-
--- Katalog dan lagu: tidak ada policy INSERT/UPDATE/DELETE => klien tidak bisa menulis (service role melewati RLS).
-create policy artists_read on public.artists for select to authenticated using (true);
-create policy albums_read  on public.albums  for select to authenticated using (true);
-
-create policy songs_read on public.songs for select to authenticated
-using (
-  status = 'ready'
-  and (
-    visibility = 'public'
-    or (owner_id = (select auth.uid()) and expires_at > now())
-  )
-);
-
--- Like: hanya milik sendiri, dan hanya untuk lagu yang TERLIHAT oleh pemanggil
--- (subquery di dalam policy tunduk pada RLS tabel songs milik pemanggil).
-create policy likes_read   on public.likes for select to authenticated using (user_id = (select auth.uid()));
-create policy likes_add    on public.likes for insert to authenticated
-  with check (user_id = (select auth.uid()) and exists (select 1 from public.songs s where s.id = song_id));
-create policy likes_remove on public.likes for delete to authenticated using (user_id = (select auth.uid()));
-
-create policy playlists_own on public.playlists for all to authenticated
-  using (user_id = (select auth.uid()))
-  with check (user_id = (select auth.uid()));
-
-create policy playlist_songs_read on public.playlist_songs for select to authenticated
-  using (exists (select 1 from public.playlists p where p.id = playlist_id and p.user_id = (select auth.uid())));
-create policy playlist_songs_add on public.playlist_songs for insert to authenticated
-  with check (
-    exists (select 1 from public.playlists p where p.id = playlist_id and p.user_id = (select auth.uid()))
-    and exists (select 1 from public.songs s where s.id = song_id));
-create policy playlist_songs_remove on public.playlist_songs for delete to authenticated
-  using (exists (select 1 from public.playlists p where p.id = playlist_id and p.user_id = (select auth.uid())));
-```
-
-</details>
-
-### `0004_storage`
-
-<details>
-<summary>Tampilkan SQL</summary>
-
-```sql
--- 0004_storage.sql — bucket dan policy Storage
--- file_size_limit ditegakkan Storage terhadap byte yang benar-benar masuk (tidak bisa dipalsukan klien).
--- allowed_mime_types hanya memeriksa Content-Type yang DIKLAIM klien, jadi ini pagar kasar, bukan validasi isi.
-insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) values
-  ('audio',       'audio',       true,  15728640, array['audio/mpeg', 'audio/mp4', 'audio/x-m4a']),
-  ('covers',      'covers',      true,   2097152, array['image/jpeg', 'image/png', 'image/webp']),
-  ('user-audio',  'user-audio',  false, 10485760, array['audio/mpeg']),
-  ('user-covers', 'user-covers', false,  2097152, array['image/jpeg', 'image/png', 'image/webp'])
-on conflict (id) do update
-  set public = excluded.public, file_size_limit = excluded.file_size_limit,
-      allowed_mime_types = excluded.allowed_mime_types;
-
--- Bucket publik (audio, covers): tidak ada policy untuk klien => klien tidak bisa menulis/mengubah/menghapus.
--- Pembacaan lewat URL publik tidak memerlukan policy. Penulisan hanya service role (skrip seed).
-
--- Pemeriksa "apakah path ini milik reservasi pending saya?". SECURITY DEFINER karena baris 'pending'
--- sengaja tidak terlihat lewat RLS songs.
-create or replace function public.owns_pending_object(p_bucket text, p_name text)
-returns boolean language sql stable security definer set search_path = '' as $$
-  select exists (
-    select 1 from public.songs s
-     where s.owner_id = (select auth.uid())
-       and s.visibility = 'private' and s.status = 'pending' and s.expires_at > now()
-       and ((p_bucket = 'user-audio'  and s.audio_path = p_name)
-         or (p_bucket = 'user-covers' and s.cover_path = p_name))
-  );
-$$;
-revoke all on function public.owns_pending_object(text, text) from public, anon;
-grant execute on function public.owns_pending_object(text, text) to authenticated;
-
--- Tulis: HANYA ke path yang sudah dipesan lewat reserve_upload dan masih 'pending'. Tidak ada policy UPDATE,
--- jadi objek tidak bisa ditimpa (upsert ditolak) dan tak bisa diganti setelah divalidasi.
--- Tidak ada policy DELETE: penghapusan hanya lewat server (service role).
-create policy "private_upload_reserved_path_only" on storage.objects
-for insert to authenticated
-with check (
-  bucket_id in ('user-audio', 'user-covers')
-  and public.owns_pending_object(bucket_id, name)
-);
-
--- Baca (dibutuhkan createSignedUrl): hanya bila ada baris songs yang TERLIHAT bagi pemanggil,
--- artinya status 'ready', milik sendiri, dan belum kedaluwarsa (RLS songs yang menegakkan).
-create policy "private_read_own_live" on storage.objects
-for select to authenticated
-using (
-  (bucket_id = 'user-audio'  and exists (select 1 from public.songs s where s.audio_path = name))
-  or
-  (bucket_id = 'user-covers' and exists (select 1 from public.songs s where s.cover_path = name))
-);
-```
-
-</details>
-
-### `0005_cron`
-
-<details>
-<summary>Tampilkan SQL</summary>
-
-```sql
--- 0005_cron.sql — penjadwalan job F18 (TIDAK ikut diuji lokal: butuh pg_cron, pg_net, Vault, dan Edge Function)
--- Prasyarat: extension pg_cron dan pg_net aktif; secret 'cleanup_secret' ada di Vault dan sama dengan CLEANUP_SECRET
--- di Edge Function; <PROJECT_REF> diganti dengan ref proyek.
-select cron.schedule('cleanup-songs-hourly', '7 * * * *', $$
-  select net.http_post(
-    url     := 'https://<PROJECT_REF>.supabase.co/functions/v1/cleanup?task=songs',
-    headers := jsonb_build_object('Authorization',
-                 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'cleanup_secret')),
-    timeout_milliseconds := 60000);
-$$);
-
-select cron.schedule('cleanup-users-daily', '23 3 * * *', $$
-  select net.http_post(
-    url     := 'https://<PROJECT_REF>.supabase.co/functions/v1/cleanup?task=users',
-    headers := jsonb_build_object('Authorization',
-                 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'cleanup_secret')),
-    timeout_milliseconds := 60000);
-$$);
-
-select cron.schedule('cleanup-orphans-daily', '41 3 * * *', $$
-  select net.http_post(
-    url     := 'https://<PROJECT_REF>.supabase.co/functions/v1/cleanup?task=orphans',
-    headers := jsonb_build_object('Authorization',
-                 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'cleanup_secret')),
-    timeout_milliseconds := 60000);
-$$);
-```
-
-</details>
-
-## Lampiran B — `lib/audio/mp3.ts`
-
-Fungsi murni tanpa I/O; unit test (CBR, ID3, Xing, ID3 besar, WAV, byte acak, Layer II, ukuran) lulus di Node 24.
-
-```ts
-// lib/audio/mp3.ts — fungsi murni (tanpa I/O): dipakai Route Handler finalize, skrip seed, dan unit test.
-// Hanya menerima MPEG Layer III (MP3 sungguhan). Layer I/II, WAV, AAC, dan file acak ditolak.
-
-export const LIMITS = {
-  maxBytes: 10 * 1024 * 1024, // batas pengunjung
-  minBytes: 4 * 1024,
-  maxId3Bytes: 4 * 1024 * 1024,
-  headBytes: 64 * 1024, // yang dibaca dari awal file lewat HTTP Range
-  windowBytes: 32 * 1024, // jendela kedua bila tag ID3 melewati headBytes
-  scanBytes: 16 * 1024, // ruang minimum di depan untuk mencari 3 frame beruntun
-} as const;
-
-const BITRATE_V1_L3 = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, -1];
-const BITRATE_V2_L3 = [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, -1];
-const SAMPLE_RATE: Record<number, number[]> = { 3: [44100, 48000, 32000], 2: [22050, 24000, 16000], 0: [11025, 12000, 8000] };
-
-export type Frame = { len: number; bitrateKbps: number; sampleRate: number; samplesPerFrame: number };
-
-/** Header frame 4 byte di offset o, atau null bila bukan header MP3 Layer III yang valid. */
-export function parseFrameHeader(b: Uint8Array, o: number): Frame | null {
-  if (o < 0 || o + 4 > b.length) return null;
-  if (b[o] !== 0xff || (b[o + 1] & 0xe0) !== 0xe0) return null; // 11 bit sinkron
-  const version = (b[o + 1] >> 3) & 3; // 3=MPEG1, 2=MPEG2, 0=MPEG2.5, 1=cadangan
-  const layer = (b[o + 1] >> 1) & 3; // 1 = Layer III
-  const brIdx = (b[o + 2] >> 4) & 15;
-  const srIdx = (b[o + 2] >> 2) & 3;
-  const pad = (b[o + 2] >> 1) & 1;
-  if (version === 1 || layer !== 1 || srIdx === 3) return null;
-  const bitrateKbps = (version === 3 ? BITRATE_V1_L3 : BITRATE_V2_L3)[brIdx];
-  if (bitrateKbps <= 0) return null; // 0 = "free format", -1 = tidak valid: ditolak
-  const sampleRate = SAMPLE_RATE[version][srIdx];
-  const samplesPerFrame = version === 3 ? 1152 : 576;
-  const len = Math.floor(((samplesPerFrame / 8) * bitrateKbps * 1000) / sampleRate) + pad;
-  return { len, bitrateKbps, sampleRate, samplesPerFrame };
-}
-
-/** Total byte tag ID3v2 di awal file yang harus dilewati (0 bila tidak ada). */
-export function id3v2Size(b: Uint8Array): number {
-  if (b.length < 10 || b[0] !== 0x49 || b[1] !== 0x44 || b[2] !== 0x33) return 0; // "ID3"
-  const size = ((b[6] & 0x7f) << 21) | ((b[7] & 0x7f) << 14) | ((b[8] & 0x7f) << 7) | (b[9] & 0x7f);
-  return 10 + size + (b[5] & 0x10 ? 10 : 0);
-}
-
-/** Cari posisi pertama yang diikuti `needed` frame valid BERUNTUN (menghindari salah deteksi byte acak). */
-export function findFirstFrames(b: Uint8Array, from: number, scanLimit = 8192, needed = 3): { offset: number; frame: Frame } | null {
-  const end = Math.min(from + scanLimit, b.length - 4);
-  for (let s = Math.max(from, 0); s < end; s++) {
-    let o = s;
-    let first: Frame | null = null;
-    let n = 0;
-    while (n < needed) {
-      const f = parseFrameHeader(b, o);
-      if (!f) break;
-      first ??= f;
-      n++;
-      o += f.len;
-    }
-    if (n === needed && first) return { offset: s, frame: first };
-  }
-  return null;
-}
-
-/** Jumlah frame dari header Xing/Info (VBR/CBR modern), atau null. */
-export function xingFrames(b: Uint8Array, o: number, f: Frame): number | null {
-  const mono = ((b[o + 3] >> 6) & 3) === 3;
-  const mpeg1 = f.samplesPerFrame === 1152;
-  const side = mpeg1 ? (mono ? 17 : 32) : mono ? 9 : 17;
-  const t = o + 4 + side;
-  if (t + 12 > b.length) return null;
-  const tag = String.fromCharCode(b[t], b[t + 1], b[t + 2], b[t + 3]);
-  if ((tag !== 'Xing' && tag !== 'Info') || !(b[t + 7] & 1)) return null;
-  return ((b[t + 8] << 24) | (b[t + 9] << 16) | (b[t + 10] << 8) | b[t + 11]) >>> 0;
-}
-
-export type Mp3Verdict =
-  | { ok: true; durationSec: number; bitrateKbps: number; sampleRate: number }
-  | { ok: false; reason: 'too_small' | 'too_large' | 'not_mp3' | 'tag_too_large' }
-  | { ok: false; reason: 'need_window'; needFrom: number };
-
-/**
- * head  : byte 0..headBytes-1 file.
- * total : ukuran file sebenarnya (dari Content-Range / Content-Length, BUKAN dari klien).
- * win   : bila hasil sebelumnya 'need_window', ambil LIMITS.windowBytes byte mulai needFrom lalu panggil ulang.
- */
-export function checkMp3(head: Uint8Array, total: number, win?: { offset: number; bytes: Uint8Array }): Mp3Verdict {
-  if (total > LIMITS.maxBytes) return { ok: false, reason: 'too_large' };
-  if (total < LIMITS.minBytes) return { ok: false, reason: 'too_small' };
-  const skip = id3v2Size(head);
-  if (skip > LIMITS.maxId3Bytes) return { ok: false, reason: 'tag_too_large' };
-
-  let bytes = head;
-  let base = 0;
-  const headCoversIt = skip + LIMITS.scanBytes <= head.length || head.length >= total;
-  if (!headCoversIt) {
-    if (!win || win.offset !== skip) return { ok: false, reason: 'need_window', needFrom: skip };
-    bytes = win.bytes;
-    base = win.offset;
-  }
-  const hit = findFirstFrames(bytes, skip - base);
-  if (!hit) return { ok: false, reason: 'not_mp3' };
-
-  const { frame } = hit;
-  const xing = xingFrames(bytes, hit.offset, frame);
-  const audioBytes = total - (base + hit.offset);
-  const seconds = xing ? (xing * frame.samplesPerFrame) / frame.sampleRate : (audioBytes * 8) / (frame.bitrateKbps * 1000);
-  return { ok: true, durationSec: Math.max(1, Math.round(seconds)), bitrateKbps: frame.bitrateKbps, sampleRate: frame.sampleRate };
-}
-
-/** Magic bytes cover: JPEG / PNG / WebP. */
-export function checkImage(b: Uint8Array, ext: 'jpg' | 'png' | 'webp'): boolean {
-  if (ext === 'jpg') return b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
-  if (ext === 'png') return b.length > 8 && [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((v, i) => b[i] === v);
-  const s = (o: number) => String.fromCharCode(b[o], b[o + 1], b[o + 2], b[o + 3]);
-  return b.length > 12 && s(0) === 'RIFF' && s(8) === 'WEBP';
-}
-```
+Kode hanya ada di [`lib/audio/mp3.ts`](../lib/audio/mp3.ts) dan uji di [`lib/audio/mp3.test.ts`](../lib/audio/mp3.test.ts) (`node lib/audio/mp3.test.ts`): fungsi murni tanpa I/O yang menerima Layer III saja; uji mencakup CBR, ID3, Xing, ID3 besar (jendela kedua), WAV, byte acak, Layer II, satu frame di tengah sampah, dan batas ukuran.

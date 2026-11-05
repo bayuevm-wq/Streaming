@@ -284,3 +284,34 @@ select t.login(:A);
 select t.err('T18d klien tak bisa membaca app_limits', $$select * from public.app_limits$$, 'permission denied');
 select t.err('T18e klien tak bisa mengubah app_limits', $$update public.app_limits set private_storage_cap_bytes = 1$$, 'permission denied');
 select t.logout();
+
+\echo == T19 kedaluwarsa reservasi diputuskan database: reject_upload dan finalize_upload ==
+select t.login(:B);
+select (public.reserve_upload('R1', 'x') ->> 'song_id') as rid \gset
+select t.check('T19a B punya 1 slot terpakai', (public.get_upload_status() ->> 'active')::int = 1);
+select t.err('T19b authenticated tak boleh memanggil reject_upload',
+  format($f$select public.reject_upload(%L, %L)$f$, :'rid', :B::text), 'permission denied');
+select t.logout();
+select t.as_service();
+select public.reject_upload(:'rid', :B);
+select t.logout();
+select t.check('T19c reject_upload mengatur expires_at <= now() menurut DB dan status tetap pending',
+  (select status = 'pending' and expires_at <= now() from public.songs where id = :'rid'));
+select t.login(:B);
+select t.check('T19d slot langsung bebas setelah reject', (public.get_upload_status() ->> 'active')::int = 0);
+select t.logout();
+select t.as_service();
+select t.err('T19e finalize_upload atas reservasi yang ditolak/kedaluwarsa => reservation_expired',
+  format($f$select public.finalize_upload(%L, %L, 100, 1000)$f$, :'rid', :B::text), 'reservation_expired');
+select t.err('T19f finalize_upload dengan owner salah => reservation_invalid',
+  format($f$select public.finalize_upload(%L, %L, 100, 1000)$f$, :'rid', :A::text), 'reservation_invalid');
+select id as a_ready from public.songs where title = 'Pribadi 2' \gset
+select public.reject_upload(:'a_ready', :A);
+select t.check('T19g reject_upload tidak menyentuh lagu yang sudah ready',
+  (select status = 'ready' and expires_at > now() from public.songs where id = :'a_ready'));
+-- Reservasi kedaluwarsa yang lebih lama tidak diperpanjang oleh reject_upload.
+update public.songs set expires_at = now() - interval '1 hour' where id = :'rid';
+select public.reject_upload(:'rid', :B);
+select t.check('T19h reject_upload tidak memperpanjang reservasi yang sudah lama kedaluwarsa',
+  (select expires_at < now() - interval '59 minutes' from public.songs where id = :'rid'));
+select t.logout();
