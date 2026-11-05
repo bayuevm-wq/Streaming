@@ -54,7 +54,7 @@ Proyek portofolio perlu menunjukkan kemampuan membangun aplikasi full-stack yang
 | F5 | Upload lagu pengunjung ke library pribadi (judul, artis, album, cover; MP3, ≤ 10 MB, ≤ 3 lagu, hapus otomatis 24 jam) | **Wajib (P0)** |
 | F6 | Pencarian | **Wajib (P0)** |
 | F7 | Like lagu + halaman "Lagu Disukai" | **Wajib (P0)** |
-| F8 | Playlist (buat, tambah/hapus lagu, putar) | **Wajib (P0)** |
+| F8 | Playlist (buat, tambah/hapus lagu, putar; maks 20 playlist per user, 200 lagu per playlist) | **Wajib (P0)** |
 | F9 | Seed katalog publik (skrip + service role) | **Wajib (P0)** — pendukung |
 | F10 | Antrean: reorder via drag, "putar berikutnya" | Nanti (P1) |
 | F11 | Mode acak & ulang (shuffle/repeat) | Nanti (P1) — *lihat catatan di F2* |
@@ -66,6 +66,7 @@ Proyek portofolio perlu menunjukkan kemampuan membangun aplikasi full-stack yang
 | F17 | Upgrade akun anonim ke akun email tanpa kehilangan data | Nanti (P1) |
 | F18 | Pembersihan otomatis: akun anonim tidak aktif 7 hari & upload pribadi > 24 jam | **Wajib (P0)** — pendukung |
 | F19 | Akun admin + form upload admin (opsi "Katalog publik") | Nanti (P1) |
+| F20 | Keep-alive harian agar proyek Supabase free tier tidak di-pause (GitHub Actions) | **Wajib (P0)** — pendukung |
 
 > **Catatan F2 vs F11:** *Repeat* dan *shuffle* sangat dekat dengan inti pemutar dan murah dikerjakan bersamaan dengan antrean. Jika waktu cukup, kerjakan di fase yang sama; tidak memblokir rilis.
 
@@ -150,6 +151,7 @@ Proyek portofolio perlu menunjukkan kemampuan membangun aplikasi full-stack yang
 - [ ] **Hanya MP3**: ditolak jika ekstensi bukan `.mp3`, MIME bukan `audio/mpeg`, atau header file bukan MP3 yang valid (diperiksa di sisi server, bukan hanya nama file).
 - [ ] **Maks 10 MB per file**; file lebih besar ditolak sebelum diunggah dan juga ditolak oleh batas bucket/policy.
 - [ ] **Maks 3 lagu aktif per akun** (lagu yang belum kedaluwarsa). Given sudah 3 lagu aktif, Then form dinonaktifkan dengan pesan jelas; penegakan di DB/RPC sehingga dua upload paralel tidak bisa melampaui 3.
+- [ ] **Batas penyimpanan pribadi global 500 MB**: total ukuran semua lagu pribadi yang barisnya masih ada (termasuk yang sudah kedaluwarsa tetapi belum dihapus job); reservasi yang belum selesai dihitung 10 MB. Hanya byte audio yang dihitung, cover tidak. Given batas penuh, Then **upload pengunjung ditutup sementara**: form dinonaktifkan dengan pesan "Upload sedang ditutup sementara karena penyimpanan penuh. Coba lagi nanti.", dan permintaan lewat API langsung ditolak database (`storage_full`). Upload terbuka kembali otomatis setelah job pembersih membebaskan ruang. Nilai batas dapat diubah pemilik proyek lewat SQL tanpa mengubah kode.
 - [ ] Menghapus lagu pribadi secara manual membebaskan slot dan menghapus file Storage-nya.
 - [ ] UI menampilkan slot terpakai (mis. "2/3") dan waktu sisa sebelum tiap lagu terhapus.
 - [ ] Setiap lagu pribadi memiliki `expires_at = waktu upload + 24 jam`. Setelah itu lagu **tidak dapat dibaca** (RLS/query memfilter `expires_at > now()`) dan signed URL-nya ditolak, walaupun job pembersih belum berjalan.
@@ -200,6 +202,8 @@ Proyek portofolio perlu menunjukkan kemampuan membangun aplikasi full-stack yang
 - [ ] Menghapus playlist yang sedang diputar tidak menghentikan lagu yang sedang berjalan, namun antrean tetap utuh.
 - [ ] Playlist kosong menampilkan empty state; playlist hanya dapat diakses pemiliknya (RLS); ID milik pengguna lain/tidak ada menghasilkan 404.
 - [ ] Playlist boleh berisi lagu publik dan lagu pribadi milik sendiri. Saat lagu pribadi kedaluwarsa, ia otomatis hilang dari playlist dan Lagu Disukai, jumlah lagu diperbarui, dan lagu itu dilewati di antrean tanpa error.
+- [ ] **Maks 20 playlist per user** dan **maks 200 lagu per playlist**, ditegakkan di database (trigger, aman terhadap permintaan paralel; bukan hanya di UI). Given batas tercapai, Then aksi ditolak dengan pesan jelas ("Batas 20 playlist tercapai" / "Playlist penuh (200 lagu)") dan tombol terkait dinonaktifkan. Menghapus playlist atau lagu membebaskan ruang seketika.
+- [ ] Hitungan 200 lagu mencakup baris lagu pribadi yang sudah kedaluwarsa tetapi belum dihapus job (paling lama ±75 menit); ini disengaja agar penghitungan sederhana.
 
 ### F9 — Seed data demo
 
@@ -247,6 +251,20 @@ Proyek portofolio perlu menunjukkan kemampuan membangun aplikasi full-stack yang
 - [ ] Job idempoten dan aman dijalankan ulang; urutan penghapusan menjamin tidak ada baris atau file yatim, dan kegagalan dicatat di log.
 - [ ] Diuji dengan data fixture berumur >24 jam dan >7 hari: yang kedaluwarsa terhapus, yang belum tetap ada.
 
+### F20 — Keep-alive harian (GitHub Actions)
+
+**Story:** Sebagai pemilik proyek, saya ingin proyek Supabase free tier tidak di-pause karena tidak aktif agar demo portofolio selalu bisa dibuka reviewer.
+
+**Dasar (kebijakan Supabase, dicek 2026-11-05):** proyek Free Plan yang menunjukkan aktivitas rendah selama 7 hari di-pause otomatis; "beberapa permintaan ke database setiap hari" dinyatakan cukup untuk mencegahnya; ada email peringatan sekitar seminggu sebelumnya; proyek yang di-pause dapat dipulihkan hingga 1 tahun; proyek berbayar tidak di-pause. Sumber: <https://supabase.com/docs/guides/platform/free-project-pausing>. Karena job pembersih (F18) berjalan di dalam database, **tidak dapat diandalkan sebagai aktivitas "pengguna"**; keep-alive harus berupa permintaan API dari luar.
+
+**Acceptance criteria**
+- [ ] Workflow GitHub Actions terjadwal **harian** (plus `workflow_dispatch` untuk uji manual) memanggil `POST {SUPABASE_URL}/rest/v1/rpc/ping` dengan anon key.
+- [ ] `ping()` adalah fungsi **hanya-baca** yang benar-benar membaca tabel (agar terhitung aktivitas database) dan hanya mengembalikan `{ ok, ts }`; tidak ada data pengguna yang terbuka. Fungsi ini boleh dipanggil role `anon`; tidak ada akses tabel lain untuk `anon`.
+- [ ] Workflow tidak memakai service-role key. Secret yang dibutuhkan: `SUPABASE_URL` dan `SUPABASE_ANON_KEY`; bila belum diatur, workflow berhenti dengan pesan jelas (bukan gagal merah).
+- [ ] Permintaan dicoba ulang hingga 3 kali; bila tetap non-2xx, workflow **gagal** sehingga GitHub mengirim notifikasi ke pemilik.
+- [ ] Dokumentasi di README: cara mengisi secret, dan peringatan bahwa GitHub dapat menonaktifkan workflow terjadwal pada repositori publik yang tidak aktif lama (cek ulang di dokumentasi GitHub; commit berkala atau jalankan manual bila perlu).
+- [ ] Bila proyek dipindah ke paket berbayar, workflow ini boleh dimatikan.
+
 ---
 
 ## 7. Persyaratan Non-Fungsional
@@ -255,7 +273,7 @@ Proyek portofolio perlu menunjukkan kemampuan membangun aplikasi full-stack yang
 - **Performa:** First Contentful Paint beranda ≤ 2 s di jaringan 4G; audio mulai terdengar ≤ 2 s setelah klik play (file ≤ 15 MB, Storage publik/signed URL).
 - **Aksesibilitas:** semua kontrol pemutar dapat dioperasikan dengan keyboard, punya label ARIA, dan kontras warna memenuhi WCAG AA.
 - **Kompatibilitas:** Chrome, Firefox, Safari, Edge versi terbaru; viewport 360 px hingga desktop. Safari/iOS diuji khusus untuk kebijakan autoplay.
-- **Biaya:** tetap di free tier Supabase; batas upload pengunjung (10 MB × 3 lagu, hapus 24 jam), pembersihan akun anonim 7 hari, dan CAPTCHA melindungi kuota Storage dan Auth.
+- **Biaya:** tetap di free tier Supabase; batas upload pengunjung (10 MB × 3 lagu, hapus 24 jam), pembersihan akun anonim 7 hari, dan CAPTCHA melindungi kuota Storage dan Auth. Batas free tier yang menjadi acuan (dicek 2026-11-05): database 500 MB, Storage 1 GB, egress 5 GB, Edge Function 500.000 invokasi; angka ini perlu dicek ulang saat rilis. Anggaran Storage: lagu pribadi ≤ 500 MB (batas global F5) + katalog seed (≥ 15 lagu, ≤ 15 MB per file) + cover, seluruhnya di bawah 1 GB. Proyek Free di-pause bila aktivitas database rendah 7 hari, ditangani F20.
 
 ## 8. Model Data (garis besar)
 
@@ -264,6 +282,8 @@ Proyek portofolio perlu menunjukkan kemampuan membangun aplikasi full-stack yang
 - Lagu `public`: `owner_id` kosong, `expires_at` kosong, memakai `artist_id`/`album_id`; di MVP hanya service role (skrip seed) yang menulis; admin via UI di P1.
 - Lagu `private`: `owner_id = auth.uid()`, `expires_at = created_at + 24 jam`, artis/album sebagai teks (`artist_name`/`album_name`); terbaca hanya jika `owner_id = auth.uid() AND expires_at > now()`.
 - `likes`, `playlists`, `playlist_songs`, dan lagu pribadi memakai `ON DELETE CASCADE` ke `auth.users` dan ke `songs`, sehingga penghapusan akun anonim atau lagu kedaluwarsa membersihkan semua turunannya.
+
+- `app_limits(id, private_storage_cap_bytes)`: tabel satu baris untuk batas global (default 500 MB), tanpa akses klien.
 
 Storage: bucket publik `audio` & `covers` (tulis hanya service role di MVP); bucket privat `user-audio` & `user-covers` dengan path `{user_id}/{uuid}` dan policy berbasis folder; audio privat diakses lewat signed URL.
 
@@ -282,6 +302,8 @@ Karena ini portofolio, metrik diukur dengan daftar periksa dan uji manual, bukan
 | Uji RLS: user A tidak dapat membaca/menulis like, playlist, lagu pribadi user B | 100% lulus |
 | Uji batas upload pengunjung (non-MP3, >10 MB, lagu ke-4, paralel, tulis katalog publik) ditolak server | 100% ditolak |
 | Uji pembersihan (fixture >24 jam & >7 hari) | 100% lulus |
+| Uji batas: playlist ke-21, lagu ke-201 per playlist, dan upload saat batas global 500 MB penuh ditolak database, termasuk pada permintaan paralel | 100% ditolak |
+| Keep-alive harian berjalan dan ping sukses (cek riwayat workflow) | ≥ 6 dari 7 hari terakhir |
 
 **Indikator tambahan (opsional, 1–3 bulan)**
 - Jumlah kunjungan/klik dari tautan portofolio (jika memasang analitik ringan).
@@ -302,6 +324,10 @@ Karena ini portofolio, metrik diukur dengan daftar periksa dan uji manual, bukan
 9. **Format katalog (F9 dan F19):** MP3 dan M4A saja (OGG dihapus karena dukungan Safari tidak konsisten), maks 15 MB, disarankan 128–192 kbps.
 10. **Sumber seed:** Pixabay Music atau CC0; hindari lagu berlisensi NC; sumber dan lisensi tiap lagu dicatat di README.
 11. **State pemutar:** Zustand, dengan satu elemen audio di luar siklus render React.
+12. **Batas penyimpanan pribadi global:** 500 MB; bila penuh, upload pengunjung ditutup sementara dengan pesan jelas (F5).
+13. **Batas playlist:** maks 20 playlist per user dan 200 lagu per playlist, ditegakkan di database (F8).
+14. **Keep-alive:** kebijakan pause proyek Free berlaku (7 hari aktivitas rendah), sehingga ditambahkan keep-alive harian lewat GitHub Actions yang memanggil fungsi `ping()` ringan (F20).
+15. **Perubahan arsitektur yang disetujui:** status `pending` + TTL reservasi 15 menit (validasi isi file sebelum publikasi); jeda 15 menit sebelum penghapusan fisik lagu kedaluwarsa; hapus manual membebaskan slot seketika dan file dihapus segera; penjadwal memakai `pg_cron` + Edge Function; kolom/tabel `songs.seed_key`, `profiles.status`, `job_leases`, `app_limits`; M4A hanya untuk katalog publik. Rinciannya di `docs/architecture.md`.
 
 ### Pertanyaan terbuka
 
@@ -313,10 +339,10 @@ Karena ini portofolio, metrik diukur dengan daftar periksa dan uji manual, bukan
 
 Tidak ada tenggat keras yang diketahui. Urutan pengerjaan yang disarankan (tiap fase menghasilkan sesuatu yang bisa didemokan):
 
-1. **Fase 1 — Fondasi:** setup Next.js + Tailwind + Supabase, skema DB + RLS (termasuk visibilitas lagu, tabel `profiles`, dan tanpa policy tulis katalog untuk klien), F1 (sign-in anonim + CAPTCHA), F9 (seed lewat skrip dengan service role).
+1. **Fase 1 — Fondasi:** setup Next.js + Tailwind + Supabase, skema DB + RLS (termasuk visibilitas lagu, tabel `profiles`, dan tanpa policy tulis katalog untuk klien), F1 (sign-in anonim + CAPTCHA), F9 (seed lewat skrip dengan service role), F20 (keep-alive harian).
 2. **Fase 2 — Inti mendengar:** F3 (beranda), F4 (album & artis), **F2 (pemutar global)**. *Pemutar adalah risiko teknis terbesar dan pembeda utama — kerjakan lebih awal.*
 3. **Fase 3 — Interaksi:** F6 (pencarian), F7 (like), F8 (playlist).
 4. **Fase 4 — Konten:** F5 (upload pribadi pengunjung dengan seluruh batasnya) dan F18 (job pembersihan 24 jam / 7 hari).
 5. **Fase 5 — Poles & rilis:** uji end-to-end, aksesibilitas, Lighthouse, README (screenshot, lisensi audio, tautan demo), deploy (mis. Vercel). Setelah itu ambil item P1 sesuai waktu.
 
-**Definisi selesai MVP:** semua F1–F9 dan F18 memenuhi acceptance criteria, uji end-to-end lulus, demo ter-deploy dengan seed data, dan README tersedia.
+**Definisi selesai MVP:** semua F1–F9, F18, dan F20 memenuhi acceptance criteria, uji end-to-end lulus, demo ter-deploy dengan seed data, dan README tersedia.
