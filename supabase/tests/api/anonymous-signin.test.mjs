@@ -80,8 +80,10 @@ assert.notEqual(A.user.id, B.user.id);
   }
   const fourth = await A.c.rpc("reserve_upload", { p_title: "T4", p_artist_name: "Aku" });
   assert.ok(fourth.error?.message.includes("quota_exceeded"), `reserve #4 harus quota_exceeded, dapat: ${fourth.error?.message}`);
-  const visible = await A.c.from("songs").select("id");
-  assert.equal(visible.data.length, 0, "baris pending tak boleh terlihat klien");
+  // Hanya lagu PRIBADI yang diperiksa: database yang sama dipakai uji SQL, yang meninggalkan lagu publik.
+  const visible = await A.c.from("songs").select("id").eq("visibility", "private");
+  assert.equal(visible.error, null, visible.error?.message);
+  assert.equal(visible.data.length, 0, "baris pending (dan lagu pribadi orang lain) tak boleh terlihat klien");
   pass("reserve_upload via API: 3 berhasil, ke-4 quota_exceeded, baris pending tak terlihat");
 }
 
