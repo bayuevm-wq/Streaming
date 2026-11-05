@@ -2,7 +2,7 @@
 
 **Status:** Draft v1 · **Tanggal:** 2026-11-05 · **Sumber:** [`docs/spec.md`](./spec.md) · **Stack:** Next.js (App Router) + Tailwind + Supabase (Postgres, Auth, Storage, Edge Functions) + Zustand
 
-> **Yang sudah dan belum diverifikasi.** Berkas migrasi `supabase/migrations/0001`–`0004` (dijalankan dari berkas itu oleh `run-mock.sh`) dan modul `mp3.ts` sudah dijalankan: **90 uji SQL lulus** di PostgreSQL 18 lokal dengan **tiruan** minimal skema `auth`/`storage` Supabase, uji konkurensi untuk tiga batas (kuota lagu, 20 playlist, penyimpanan global) lulus dan terbukti sensitif lewat kontrol tanpa kunci (§7), dan unit test `mp3.ts` lulus. Semua uji kini ada di repo: `supabase/tests/` dan `lib/audio/`. **Belum diuji:** Supabase sungguhan (Auth anonim, Storage/TUS, pembacaan Range), `pg_cron`/`pg_net`/Vault (0005), Edge Function `cleanup`, workflow keep-alive, kode Next.js, dan render diagram Mermaid. **Di Fase 1 seluruh uji SQL wajib dijalankan ulang di Supabase CLI lokal (`supabase start`), bukan Postgres tiruan** (spike S6, §14.1).
+> **Yang sudah dan belum diverifikasi.** **Spike S6 lulus:** seluruh uji SQL (90 PASS, 0 FAIL, 0 ERROR) dan uji konkurensi dijalankan di **Supabase CLI sungguhan lewat GitHub Actions** (`supabase start` + `supabase db reset` menerapkan migrasi 0001–0005 pada image Postgres 17.11), tanpa perubahan pada migrasi: [run yang lulus](https://github.com/bayuevm-wq/Streaming/actions/runs/42057143452); status terkini ada di badge README. Tiga batas (kuota lagu, 20 playlist, penyimpanan global) terbukti sensitif lewat kontrol tanpa kunci (§7), dan unit test `mp3.ts` lulus. Pada tingkat SQL sudah terbukti di Supabase asli: trigger `auth.users`, `DELETE FROM auth.sessions`, cascade hapus user, dan policy `storage.objects`. **Masih belum diuji:** alur `signInAnonymously` sungguhan + Turnstile (S5), Storage API/TUS dan pembacaan Range (S1, S2), Safari (S4), `auth.admin.deleteUser` lewat API (S3), Edge Function `cleanup`, workflow keep-alive, kode Next.js, dan render diagram Mermaid.
 
 > **Sumber kebenaran SQL dan kode.** SQL lengkap hanya ada di [`supabase/migrations/`](../supabase/migrations/) dan validator MP3 hanya di [`lib/audio/mp3.ts`](../lib/audio/mp3.ts); Lampiran A dan B cuma daftar berkas. Kutipan SQL dalam badan dokumen ini **dihasilkan dari berkas migrasi saat dokumen disusun** dan hanya untuk dibaca; bila berbeda dengan berkas migrasi, berkas migrasilah yang benar.
 
@@ -116,10 +116,11 @@ supabase/
   migrations/0001_schema.sql .. 0005_cron.sql   # sudah ada di repo (Lampiran A)
   functions/cleanup/index.ts
   tests/sql/helpers.sql            # sudah ada di repo
-  tests/sql/rls_and_limits.test.sql  # 90 uji; dijalankan ulang di `supabase start` (spike S6)
+  tests/sql/rls_and_limits.test.sql  # 90 uji; dijalankan CI terhadap Supabase CLI (spike S6)
   tests/concurrency.sh             # balapan: kuota lagu, 20 playlist, batas global
   tests/mock/{stub.sql,run-mock.sh}  # hanya untuk lingkungan tanpa Docker
 scripts/seed.ts  scripts/seed/catalog.json
+.github/workflows/db-tests.yml     # S6: uji SQL + konkurensi di Supabase CLI (sudah ada)
 .github/workflows/keepalive.yml    # §13.2 (disalin saat Fase 1)
 e2e/                               # Playwright
 ```
@@ -899,10 +900,10 @@ Catatan:
 
 | Area | Cara | Status |
 |---|---|---|
-| RLS, policy Storage, trigger, RPC, tombstone, orphan, lease, cascade, batas playlist/penyimpanan, `ping` | `supabase/tests/sql/` (90 uji) via `supabase/tests/mock/run-mock.sh` di PostgreSQL 18 dengan **tiruan** skema Supabase | **Lulus** (lokal, tiruan) |
-| Konkurensi: kuota lagu, 20 playlist, penyimpanan global | `supabase/tests/concurrency.sh`; kontrol tanpa kunci membuktikan sensitivitas | **Lulus** (3/3/3, 20, 1 vs kontrol 10/10/10, 30, 2) |
+| RLS, policy Storage, trigger, RPC, tombstone, orphan, lease, cascade, batas playlist/penyimpanan, `ping`, `reject_upload` | `supabase/tests/sql/` (90 uji), job CI `db-tests` | **Lulus di Supabase CLI sungguhan** (GitHub Actions, [run 42057143452](https://github.com/bayuevm-wq/Streaming/actions/runs/42057143452)); sebelumnya juga lulus di Postgres 18 tiruan (`mock/run-mock.sh`) |
+| Konkurensi: kuota lagu, 20 playlist, penyimpanan global | `supabase/tests/concurrency.sh`; kontrol tanpa kunci membuktikan sensitivitas (dijalankan di mock) | **Lulus di Supabase CLI** (3/3/3, 20, 1); kontrol di mock: 10/10/10, 30, 2 |
 | Validator MP3 | `node lib/audio/mp3.test.ts`: CBR, ID3, Xing, ID3 besar (jendela kedua), WAV, byte acak, Layer II, 1 frame di tengah sampah, ukuran | **Lulus** |
-| **Semua uji SQL dan konkurensi di Supabase CLI lokal** (`supabase start`, DB di port 54322) | Jalankan `psql -f helpers.sql -f rls_and_limits.test.sql` dan `PGURL=… concurrency.sh` terhadap migrasi asli, **tanpa tiruan**; lalu port ke pgTAP (`supabase test db`) untuk CI | **Wajib di Fase 1 (spike S6)** |
+| **Semua uji SQL dan konkurensi di Supabase CLI** | Workflow `.github/workflows/db-tests.yml` pada setiap push dan PR: `supabase start`, `supabase db reset`, `helpers.sql` + `rls_and_limits.test.sql`, `concurrency.sh` | **Lulus** (spike S6). Port ke pgTAP (`supabase test db`) tetap opsional |
 | `finalize` (integrasi) | Terhadap Supabase lokal: MP3 sah, `.exe` berekstensi `.mp3`, ID3 200 KB, terpotong, > 10 MB, bukan reservasi sendiri, dua kali dipanggil | Belum |
 | Job pembersih | Fixture waktu dimajukan (> 15 menit, > 24 jam, > 7 hari) + simulasi kegagalan Storage di tengah | Belum |
 | Navigasi tak memutus audio | Playwright: `audio.currentTime` naik monoton melintasi semua rute internal | Belum |
@@ -974,7 +975,7 @@ Perilaku: non-2xx atau respons tanpa `"ok": true` membuat langkah gagal (setelah
 
 ### 14.1 Spike yang harus dijalankan di Fase 1 (sebelum membangun di atasnya)
 
-S6 adalah syarat keluar Fase 1: tanpa itu, klaim "terverifikasi" di dokumen ini hanya berlaku untuk Postgres tiruan.
+S6 sudah lulus (lihat baris S6). Spike lain masih terbuka.
 
 | # | Pertanyaan | Bila ternyata tidak |
 |---|---|---|
@@ -983,7 +984,7 @@ S6 adalah syarat keluar Fase 1: tanpa itu, klaim "terverifikasi" di dokumen ini 
 | S3 | Apakah `DELETE FROM auth.sessions` dari fungsi SECURITY DEFINER diizinkan, dan `auth.admin.deleteUser` men-cascade seperti diharapkan? | Cabut sesi lewat Auth Admin API; cascade dipastikan lewat uji |
 | S4 | Apakah putar pertama lagu pribadi di Safari/iOS lolos setelah `await createSignedUrl`? | Pra-ambil URL saat daftar tampil/di-hover |
 | S5 | Apakah trigger pada `auth.users` aktif untuk `signInAnonymously` di proyek nyata dan tidak mengganggu sign-in? | Pindah ke pembuatan profil lewat RPC saat layout pertama kali dimuat (self-heal sudah ada) |
-| **S6** | **Jalankan ulang SEMUA uji SQL dan konkurensi di Supabase CLI lokal (`supabase start`), bukan Postgres tiruan.** Sasaran: migrasi 0001–0004 diterapkan tanpa error; `helpers.sql` + `rls_and_limits.test.sql` = 0 FAIL dan 0 ERROR; `PGURL=postgresql://postgres:postgres@127.0.0.1:54322/postgres supabase/tests/concurrency.sh` = SEMUA LULUS. Selesai bila hasilnya dicatat di dokumen ini menggantikan status "tiruan" di §12. | Perbaiki perbedaan, bukan menyesuaikan uji agar lulus. Perbedaan yang diperkirakan (belum dikonfirmasi): kolom wajib pada `auth.users`/`auth.sessions` untuk `INSERT` tes; trigger bawaan pada `storage.objects`; cara `auth.uid()` membaca klaim JWT (helper mengatur `request.jwt.claim.sub` dan `request.jwt.claims`); versi Postgres berbeda dari 18 |
+| **S6** ✅ | Jalankan SEMUA uji SQL dan konkurensi di Supabase CLI sungguhan. **Lulus** lewat GitHub Actions (mesin pengembang tidak punya Docker): `supabase start` + `supabase db reset` menerapkan 0001–0005 **tanpa perubahan pada migrasi**, 90 PASS / 0 FAIL / 0 ERROR, `concurrency.sh` SEMUA LULUS. Run: https://github.com/bayuevm-wq/Streaming/actions/runs/42057143452. Catatan jujur: satu penyesuaian data uji (`auth.sessions` diberi `id` eksplisit karena skema asli tak punya default) dibuat **sebelum** run berdasarkan dugaan, bukan ditemukan oleh run. | Bila ada regresi, perbaiki migrasi, bukan uji. S6 tidak mencakup Auth anonim via API (S5) dan Storage API/TUS (S1, S2) |
 
 ### 14.2 Risiko
 
@@ -1029,7 +1030,7 @@ Pertanyaan lama tentang batas penyimpanan global, batas playlist, dan konfirmasi
 
 | Fase (spec §11) | Pekerjaan arsitektur |
 |---|---|
-| 1 Fondasi | Migrasi 0001–0004; konfigurasi Auth (anonim + Turnstile); trigger profiles; `mp3.ts`; skrip seed; **jalankan ulang semua uji SQL dan konkurensi di `supabase start` (S6)** lalu port ke pgTAP; workflow keep-alive (F20); **spike S1–S5** |
+| 1 Fondasi | Migrasi 0001–0005; **S6 selesai (CI)**; setup Next.js + klien Supabase; konfigurasi Auth (anonim + Turnstile) dan F1; trigger profiles (S5); `mp3.ts`; skrip seed (F9); workflow keep-alive (F20); **spike S1–S5** |
 | 2 Inti mendengar | Layout `(app)`, middleware, halaman beranda/album/artis, pemutar Zustand + audio singleton |
 | 3 Interaksi | RPC `search_all`, like, playlist |
 | 4 Konten | `/unggah` (reserve → TUS → finalize), Route Handler `finalize` dan hapus lagu, Edge Function `cleanup`, `0005_cron.sql` |
