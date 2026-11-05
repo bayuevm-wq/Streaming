@@ -26,3 +26,11 @@ node lib/audio/mp3.test.ts     # uji validator MP3
 ```
 
 Catatan: ini Next.js 16 (middleware bernama `proxy.ts`, Cache Components aktif). Baca `node_modules/next/dist/docs/` sebelum mengubah konvensi rute.
+
+## Sumber audio katalog
+
+Setiap lagu seed dicatat sumber dan lisensinya di bawah (dihasilkan `node scripts/seed.ts --dry-run --readme` dari `scripts/seed/catalog.json`). Hanya Pixabay Content License atau CC0; lagu NC tidak dipakai. Lihat [`scripts/seed/README.md`](scripts/seed/README.md) untuk cara mengisi katalog.
+
+<!-- seed-sources:start -->
+_Katalog belum diisi._
+<!-- seed-sources:end -->

@@ -81,9 +81,15 @@ export type Mp3Verdict =
  * head  : byte 0..headBytes-1 file.
  * total : ukuran file sebenarnya (dari Content-Range / Content-Length, BUKAN dari klien).
  * win   : bila hasil sebelumnya 'need_window', ambil LIMITS.windowBytes byte mulai needFrom lalu panggil ulang.
+ * maxBytes : batas ukuran; default batas pengunjung (10 MiB). Katalog publik (seed, F19) memakai 15 MiB.
  */
-export function checkMp3(head: Uint8Array, total: number, win?: { offset: number; bytes: Uint8Array }): Mp3Verdict {
-  if (total > LIMITS.maxBytes) return { ok: false, reason: 'too_large' };
+export function checkMp3(
+  head: Uint8Array,
+  total: number,
+  win?: { offset: number; bytes: Uint8Array },
+  maxBytes: number = LIMITS.maxBytes,
+): Mp3Verdict {
+  if (total > maxBytes) return { ok: false, reason: 'too_large' };
   if (total < LIMITS.minBytes) return { ok: false, reason: 'too_small' };
   const skip = id3v2Size(head);
   if (skip > LIMITS.maxId3Bytes) return { ok: false, reason: 'tag_too_large' };

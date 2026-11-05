@@ -6,12 +6,17 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed": "node --env-file=.env.local scripts/seed.ts",
+    "seed:check": "node scripts/seed.ts --dry-run",
+    "test:seed": "node scripts/seed/validation.test.mjs",
+    "test:audio": "node lib/audio/mp3.test.ts"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "^1.6.3",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.119.0",
+    "music-metadata": "^12.3.4",
     "next": "16.4.5",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -27,5 +32,6 @@
     "eslint-config-next": "16.4.5",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "type": "module"
 }

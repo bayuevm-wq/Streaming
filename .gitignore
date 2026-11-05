@@ -40,3 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 !.env.example
+
+# berkas besar yang tidak masuk git (katalog seed: audio dan cover disediakan lokal)
+/scripts/seed/audio/
+/scripts/seed/covers/

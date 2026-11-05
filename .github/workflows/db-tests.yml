@@ -70,6 +70,20 @@ jobs:
           export SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:-${SECRET_KEY:-}}"
           node supabase/tests/api/anonymous-signin.test.mjs
 
+      - name: Uji offline (validator MP3 dan aturan katalog seed)
+        run: |
+          npm run test:audio
+          npm run test:seed
+
+      # F9: seed berkas sintetis ke bucket publik, idempoten, dan klien tak bisa menulis katalog.
+      - name: Uji integrasi seed
+        run: |
+          eval "$(supabase status -o env | sed 's/^/export /')"
+          export SUPABASE_URL="$API_URL"
+          export SUPABASE_ANON_KEY="${ANON_KEY:-${PUBLISHABLE_KEY:-}}"
+          export SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:-${SECRET_KEY:-}}"
+          node supabase/tests/api/seed.test.mjs
+
       - name: Diagnosa (hanya bila gagal)
         if: failure()
         run: |
