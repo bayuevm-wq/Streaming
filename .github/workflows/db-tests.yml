@@ -20,6 +20,8 @@ jobs:
     timeout-minutes: 25
     env:
       PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+      # Secret uji resmi Cloudflare Turnstile (selalu lolos). Dibaca supabase/config.toml lewat env().
+      SUPABASE_AUTH_CAPTCHA_SECRET: 1x0000000000000000000000000000000AA
     steps:
       - uses: actions/checkout@v4
 
@@ -48,6 +50,25 @@ jobs:
 
       - name: Uji konkurensi
         run: bash supabase/tests/concurrency.sh
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: npm ci
+        run: npm ci
+
+      # S5 (trigger profiles lewat signInAnonymously sungguhan), F1 (CAPTCHA ditegakkan server),
+      # S3 (auth.admin.deleteUser cascade), dan isolasi dua pengunjung lewat API.
+      - name: Uji API Auth anonim
+        run: |
+          echo "variabel dari supabase status: $(supabase status -o env | cut -d= -f1 | tr '\n' ' ')"
+          eval "$(supabase status -o env | sed 's/^/export /')"
+          export SUPABASE_URL="$API_URL"
+          export SUPABASE_ANON_KEY="${ANON_KEY:-${PUBLISHABLE_KEY:-}}"
+          export SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:-${SECRET_KEY:-}}"
+          node supabase/tests/api/anonymous-signin.test.mjs
 
       - name: Diagnosa (hanya bila gagal)
         if: failure()

@@ -212,10 +212,14 @@ token_verifications = 30
 web3 = 30
 
 # Configure one of the supported captcha providers: `hcaptcha`, `turnstile`.
-# [auth.captcha]
-# enabled = true
-# provider = "hcaptcha"
-# secret = ""
+# CAPTCHA wajib untuk sign-in anonim (F1). Secret dibaca dari variabel lingkungan agar tak pernah ter-commit
+# dan agar `supabase config push` ke proyek hosted tak menimpa secret produksi dengan kunci uji.
+# Lokal dan CI: isi dengan secret uji resmi Cloudflare Turnstile yang selalu lolos
+#   export SUPABASE_AUTH_CAPTCHA_SECRET=1x0000000000000000000000000000000AA
+[auth.captcha]
+enabled = true
+provider = "turnstile"
+secret = "env(SUPABASE_AUTH_CAPTCHA_SECRET)"
 
 [auth.email]
 # Allow/disallow the email provider. When false, users can't sign up or sign in with email.
