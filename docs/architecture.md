@@ -2,7 +2,7 @@
 
 **Status:** Draft v1 · **Tanggal:** 2026-11-05 · **Sumber:** [`docs/spec.md`](./spec.md) · **Stack:** Next.js (App Router) + Tailwind + Supabase (Postgres, Auth, Storage, Edge Functions) + Zustand
 
-> **Yang sudah dan belum diverifikasi.** **Spike S6 lulus:** seluruh uji SQL (90 PASS, 0 FAIL, 0 ERROR) dan uji konkurensi dijalankan di **Supabase CLI sungguhan lewat GitHub Actions** (`supabase start` + `supabase db reset` menerapkan migrasi 0001–0005 pada image Postgres 17.11), tanpa perubahan pada migrasi: [run yang lulus](https://github.com/bayuevm-wq/Streaming/actions/runs/42057143452); status terkini ada di badge README. Tiga batas (kuota lagu, 20 playlist, penyimpanan global) terbukti sensitif lewat kontrol tanpa kunci (§7), dan unit test `mp3.ts` lulus. Pada tingkat SQL sudah terbukti di Supabase asli: trigger `auth.users`, `DELETE FROM auth.sessions`, cascade hapus user, dan policy `storage.objects`. **Masih belum diuji:** alur `signInAnonymously` sungguhan + Turnstile (S5), Storage API/TUS dan pembacaan Range (S1, S2), Safari (S4), `auth.admin.deleteUser` lewat API (S3), Edge Function `cleanup`, workflow keep-alive, kode Next.js, dan render diagram Mermaid.
+> **Yang sudah dan belum diverifikasi.** **Terverifikasi di Supabase CLI sungguhan lewat GitHub Actions** (job `db-tests`, [run terbaru yang lulus](https://github.com/bayuevm-wq/Streaming/actions/runs/42059170726); badge README menunjukkan status terkini): (1) spike **S6**: 90 uji SQL + uji konkurensi, migrasi 0001–0005 diterapkan `supabase db reset` tanpa perubahan; (2) spike **S5**: `signInAnonymously` sungguhan memicu trigger `profiles`; (3) **F1**: CAPTCHA ditegakkan server (tanpa token → 400 `captcha_failed`); (4) spike **S3**: `auth.admin.deleteUser` meng-cascade `profiles`, playlist, dan lagu pribadi, serta `DELETE FROM auth.sessions` dari fungsi SECURITY DEFINER diizinkan; (5) isolasi dua pengunjung dan kuota 3 lagu lewat PostgREST sungguhan. Tiga batas (kuota lagu, 20 playlist, penyimpanan global) terbukti sensitif lewat kontrol tanpa kunci (§7); unit test `mp3.ts` lulus. **Masih belum diuji:** tombol "Coba tanpa daftar" + widget Turnstile di browser sungguhan (UI baru lolos lint, tipe, dan build), Storage API/TUS dan pembacaan Range (S1, S2), Safari (S4), Edge Function `cleanup`, workflow keep-alive, dan render diagram Mermaid.
 
 > **Sumber kebenaran SQL dan kode.** SQL lengkap hanya ada di [`supabase/migrations/`](../supabase/migrations/) dan validator MP3 hanya di [`lib/audio/mp3.ts`](../lib/audio/mp3.ts); Lampiran A dan B cuma daftar berkas. Kutipan SQL dalam badan dokumen ini **dihasilkan dari berkas migrasi saat dokumen disusun** dan hanya untuk dibaca; bila berbeda dengan berkas migrasi, berkas migrasilah yang benar.
 
@@ -915,7 +915,8 @@ Catatan:
 | Job pembersih | Fixture waktu dimajukan (> 15 menit, > 24 jam, > 7 hari) + simulasi kegagalan Storage di tengah | Belum |
 | Navigasi tak memutus audio | Playwright: `audio.currentTime` naik monoton melintasi semua rute internal | Belum |
 | Isolasi dua pengunjung | Playwright dua konteks browser: A menyukai/membuat playlist, B tidak melihatnya | Belum |
-| Anonim + CAPTCHA | E2E dengan kunci uji Turnstile; permintaan tanpa token ditolak server | Belum |
+| Anonim + CAPTCHA + trigger profiles + isolasi + kuota via API | `supabase/tests/api/anonymous-signin.test.mjs` di job CI `db-tests` (GoTrue + PostgREST sungguhan, secret uji Turnstile) | **Lulus** ([run](https://github.com/bayuevm-wq/Streaming/actions/runs/42059170726)) |
+| Tombol "Coba tanpa daftar" + widget Turnstile di browser | Playwright dengan kunci uji Turnstile terhadap stack lokal | Belum |
 
 ---
 
@@ -988,9 +989,9 @@ S6 sudah lulus (lihat baris S6). Spike lain masih terbuka.
 |---|---|---|
 | S1 | Apakah Storage menjawab `Range` pada signed URL dengan `206` + `Content-Range`? | Fallback: baca stream dan batalkan setelah 64 KiB (kode sudah menangani `200`) |
 | S2 | Apakah TUS resumable lolos policy INSERT berbasis `owns_pending_object` (pada pembuatan *dan* penyelesaian upload)? | Pakai upload standar dengan `XMLHttpRequest` untuk progres |
-| S3 | Apakah `DELETE FROM auth.sessions` dari fungsi SECURITY DEFINER diizinkan, dan `auth.admin.deleteUser` men-cascade seperti diharapkan? | Cabut sesi lewat Auth Admin API; cascade dipastikan lewat uji |
+| S3 ✅ | Apakah `DELETE FROM auth.sessions` dari fungsi SECURITY DEFINER diizinkan, dan `auth.admin.deleteUser` men-cascade seperti diharapkan? **Lulus di Supabase CLI**: uji SQL T11 (`DELETE FROM auth.sessions` dalam `claim_inactive_anonymous_users`) dan uji API (`auth.admin.deleteUser` menghapus `profiles`, playlist, dan lagu pribadi). Run: https://github.com/bayuevm-wq/Streaming/actions/runs/42059170726. | — |
 | S4 | Apakah putar pertama lagu pribadi di Safari/iOS lolos setelah `await createSignedUrl`? | Pra-ambil URL saat daftar tampil/di-hover |
-| S5 | Apakah trigger pada `auth.users` aktif untuk `signInAnonymously` di proyek nyata dan tidak mengganggu sign-in? | Pindah ke pembuatan profil lewat RPC saat layout pertama kali dimuat (self-heal sudah ada) |
+| S5 ✅ | Apakah trigger pada `auth.users` aktif untuk `signInAnonymously` di proyek nyata dan tidak mengganggu sign-in? **Lulus di Supabase CLI**: sign-in anonim sungguhan (dengan token CAPTCHA) membuat baris `profiles` berstatus `active` dengan `last_seen_at` baru. Run: https://github.com/bayuevm-wq/Streaming/actions/runs/42059170726. | — |
 | **S6** ✅ | Jalankan SEMUA uji SQL dan konkurensi di Supabase CLI sungguhan. **Lulus** lewat GitHub Actions (mesin pengembang tidak punya Docker): `supabase start` + `supabase db reset` menerapkan 0001–0005 **tanpa perubahan pada migrasi**, 90 PASS / 0 FAIL / 0 ERROR, `concurrency.sh` SEMUA LULUS. Run: https://github.com/bayuevm-wq/Streaming/actions/runs/42057143452. Catatan jujur: satu penyesuaian data uji (`auth.sessions` diberi `id` eksplisit karena skema asli tak punya default) dibuat **sebelum** run berdasarkan dugaan, bukan ditemukan oleh run. | Bila ada regresi, perbaiki migrasi, bukan uji. S6 tidak mencakup Auth anonim via API (S5) dan Storage API/TUS (S1, S2) |
 
 ### 14.2 Risiko
