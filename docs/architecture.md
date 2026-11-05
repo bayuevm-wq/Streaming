@@ -2,7 +2,7 @@
 
 **Status:** Draft v1 · **Tanggal:** 2026-11-05 · **Sumber:** [`docs/spec.md`](./spec.md) · **Stack:** Next.js (App Router) + Tailwind + Supabase (Postgres, Auth, Storage, Edge Functions) + Zustand
 
-> **Yang sudah dan belum diverifikasi.** **Terverifikasi di Supabase CLI sungguhan lewat GitHub Actions** (job `db-tests`, [run terbaru yang lulus](https://github.com/bayuevm-wq/Streaming/actions/runs/42059170726); badge README menunjukkan status terkini): (1) spike **S6**: 90 uji SQL + uji konkurensi, migrasi 0001–0005 diterapkan `supabase db reset` tanpa perubahan; (2) spike **S5**: `signInAnonymously` sungguhan memicu trigger `profiles`; (3) **F1**: CAPTCHA ditegakkan server (tanpa token → 400 `captcha_failed`); (4) spike **S3**: `auth.admin.deleteUser` meng-cascade `profiles`, playlist, dan lagu pribadi, serta `DELETE FROM auth.sessions` dari fungsi SECURITY DEFINER diizinkan; (5) isolasi dua pengunjung dan kuota 3 lagu lewat PostgREST sungguhan. Tiga batas (kuota lagu, 20 playlist, penyimpanan global) terbukti sensitif lewat kontrol tanpa kunci (§7); unit test `mp3.ts` lulus. **Masih belum diuji:** tombol "Coba tanpa daftar" + widget Turnstile di browser sungguhan (UI baru lolos lint, tipe, dan build), Storage API/TUS dan pembacaan Range (S1, S2), Safari (S4), Edge Function `cleanup`, workflow keep-alive, dan render diagram Mermaid.
+> **Yang sudah dan belum diverifikasi.** **Terverifikasi di Supabase CLI sungguhan lewat GitHub Actions** (job `db-tests`, [run terbaru yang lulus](https://github.com/bayuevm-wq/Streaming/actions/runs/42059170726); badge README menunjukkan status terkini): (1) spike **S6**: 90 uji SQL + uji konkurensi, migrasi 0001–0005 diterapkan `supabase db reset` tanpa perubahan; (2) spike **S5**: `signInAnonymously` sungguhan memicu trigger `profiles`; (3) **F1**: CAPTCHA ditegakkan server (tanpa token → 400 `captcha_failed`); (4) spike **S3**: `auth.admin.deleteUser` meng-cascade `profiles`, playlist, dan lagu pribadi, serta `DELETE FROM auth.sessions` dari fungsi SECURITY DEFINER diizinkan; (5) isolasi dua pengunjung dan kuota 3 lagu lewat PostgREST sungguhan. Tiga batas (kuota lagu, 20 playlist, penyimpanan global) terbukti sensitif lewat kontrol tanpa kunci (§7); unit test `mp3.ts` lulus. Juga lulus di CI ([run 42060874708](https://github.com/bayuevm-wq/Streaming/actions/runs/42060874708)): (6) **F9** seed: 21 skenario aturan katalog offline, serta integrasi (unggah ke bucket publik, baris DB, idempoten, klien tak bisa menulis katalog); (7) **F20** keep-alive: `scripts/keepalive.sh` terhadap `ping()` asli pada tiga skenario (sukses, dilewati tanpa secret, gagal dengan kunci salah). **Masih belum diuji atau belum selesai:** tombol "Coba tanpa daftar" + widget Turnstile di browser sungguhan (UI baru lolos lint, tipe, dan build); Storage API/TUS dan pembacaan Range (S1, S2); Safari (S4); Edge Function `cleanup`; eksekusi workflow `keepalive` di GitHub (terdaftar aktif, tetapi pemicuan manual mendapat HTTP 500 dari API GitHub dua kali, jadi baru jadwal harian yang akan membuktikannya); **katalog seed asli belum diisi** (`scripts/seed/catalog.json` kosong: audio Pixabay/CC0 harus diunduh dan dicek lisensinya oleh pemilik); dan render diagram Mermaid.
 
 > **Sumber kebenaran SQL dan kode.** SQL lengkap hanya ada di [`supabase/migrations/`](../supabase/migrations/) dan validator MP3 hanya di [`lib/audio/mp3.ts`](../lib/audio/mp3.ts); Lampiran A dan B cuma daftar berkas. Kutipan SQL dalam badan dokumen ini **dihasilkan dari berkas migrasi saat dokumen disusun** dan hanya untuk dibaca; bila berbeda dengan berkas migrasi, berkas migrasilah yang benar.
 
@@ -121,7 +121,7 @@ supabase/
   tests/mock/{stub.sql,run-mock.sh}  # hanya untuk lingkungan tanpa Docker
 scripts/seed.ts  scripts/seed/catalog.json
 .github/workflows/db-tests.yml     # S6: uji SQL + konkurensi di Supabase CLI (sudah ada)
-.github/workflows/keepalive.yml    # §13.2 (disalin saat Fase 1)
+.github/workflows/keepalive.yml    # §13.2 (sudah ada; logika di scripts/keepalive.sh)
 e2e/                               # Playwright
 ```
 
@@ -917,6 +917,9 @@ Catatan:
 | Isolasi dua pengunjung | Playwright dua konteks browser: A menyukai/membuat playlist, B tidak melihatnya | Belum |
 | Anonim + CAPTCHA + trigger profiles + isolasi + kuota via API | `supabase/tests/api/anonymous-signin.test.mjs` di job CI `db-tests` (GoTrue + PostgREST sungguhan, secret uji Turnstile) | **Lulus** ([run](https://github.com/bayuevm-wq/Streaming/actions/runs/42059170726)) |
 | Tombol "Coba tanpa daftar" + widget Turnstile di browser | Playwright dengan kunci uji Turnstile terhadap stack lokal | Belum |
+| Seed F9: 21 skenario aturan katalog (OGG, WAV, >15 MiB, isi palsu, cover, lisensi NC/non-Pixabay-CC0, source wajib, duplikat, path traversal, mode ketat, target non-lokal, `--readme`) | `npm run test:seed` (offline; juga di CI) | **Lulus** |
+| Seed F9 integrasi: unggah ke bucket publik, baris DB lengkap, idempoten (id tetap, tanpa unggah ulang), klien anonim hanya bisa membaca katalog | `supabase/tests/api/seed.test.mjs` di CI dengan berkas sintetis | **Lulus** ([run](https://github.com/bayuevm-wq/Streaming/actions/runs/42060874708)) |
+| Keep-alive F20: sukses, dilewati tanpa secret, gagal dengan kunci salah | `scripts/keepalive.sh` di job `db-tests` terhadap `ping()` asli | **Lulus** ([run](https://github.com/bayuevm-wq/Streaming/actions/runs/42060874708)); eksekusi di GitHub Actions belum (§13.2) |
 
 ---
 
@@ -933,7 +936,7 @@ Catatan:
 
 Daftar periksa Supabase: sign-in anonim **aktif**; CAPTCHA **aktif** (Turnstile, widget tipe *Invisible*, secret di dashboard Auth); batas laju sign-in dicek; ekstensi `pg_trgm`, `pg_cron`, `pg_net`; secret `cleanup_secret` di Vault; Edge Function `cleanup` dideploy `--no-verify-jwt`; bucket dibuat lewat migrasi 0004; migrasi lewat `supabase db push` di CI. Daftarkan secret GitHub `SUPABASE_URL` dan `SUPABASE_ANON_KEY` untuk keep-alive (§13.2). Seed dijalankan manual/CI dengan service role dan memakai `seed_key` agar idempoten.
 
-**Seed (F9):** aturan format katalog (MP3/M4A, ≤ 15 MB, disarankan 128–192 kbps) diperiksa skrip sebelum unggah (MP3 dengan `mp3.ts`, M4A dengan pemeriksaan kotak `ftyp` dan `music-metadata` untuk durasi); `catalog.json` mewajibkan `source` dan `license`, menolak lisensi NC, dan skrip menghasilkan tabel sumber/lisensi untuk README.
+**Seed (F9):** aturan format katalog (MP3/M4A, ≤ 15 MB, disarankan 128–192 kbps) diperiksa skrip sebelum unggah (MP3 dengan `mp3.ts`, M4A dengan pemeriksaan kotak `ftyp` dan `music-metadata` untuk durasi); `catalog.json` mewajibkan `source` dan `license`, menolak lisensi NC, dan skrip menghasilkan tabel sumber/lisensi untuk README. Skrip dan aturannya sudah ada (`scripts/seed.ts`, `scripts/seed/rules.ts`), idempoten, menolak target non-lokal tanpa `--yes`, dan lulus uji offline serta integrasi di CI. **Katalog asli belum diisi:** `scripts/seed/catalog.json` kosong karena audio Pixabay/CC0 harus diunduh dan dicek lisensinya oleh pemilik; `npm run seed:check` sengaja gagal ("0 lagu; minimal 15") sampai katalog diisi. Audio dan cover ada di folder yang di-gitignore (lihat `scripts/seed/README.md`).
 
 ### 13.2 Keep-alive: mencegah proyek Free di-pause (F20)
 
@@ -944,31 +947,7 @@ Daftar periksa Supabase: sign-in anonim **aktif**; CAPTCHA **aktif** (Turnstile,
 - Endpoint: `POST {SUPABASE_URL}/rest/v1/rpc/ping` (PostgREST) memanggil fungsi `public.ping()` (Lampiran A, 0002): hanya-baca, membaca tabel `artists`, mengembalikan `{ "ok": true, "ts": … }`. Boleh dipanggil role `anon`, dan itu **satu-satunya** objek yang boleh dipanggil `anon`.
 - Pemanggil: GitHub Actions terjadwal harian; tidak memakai service role.
 
-```yaml
-# .github/workflows/keepalive.yml  (rancangan; disalin ke repo di Fase 1, belum ada di repo)
-name: supabase-keepalive
-on:
-  schedule: [{ cron: '17 6 * * *' }]     # harian 06:17 UTC
-  workflow_dispatch:
-permissions: {}
-jobs:
-  ping:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Panggil ping()
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        run: |
-          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
-            echo "::notice::Secret belum diatur, keep-alive dilewati."; exit 0
-          fi
-          curl -fsS --retry 3 --retry-delay 5 --retry-all-errors -X POST \
-            "$SUPABASE_URL/rest/v1/rpc/ping" \
-            -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-            -H "Content-Type: application/json" -d '{}' | tee /dev/stderr | grep -q '"ok": *true'
-```
+Berkas: [`.github/workflows/keepalive.yml`](../.github/workflows/keepalive.yml) (jadwal harian 06:17 UTC + `workflow_dispatch`) memanggil [`scripts/keepalive.sh`](../scripts/keepalive.sh); logikanya hanya ada di skrip itu (tidak disalin ke dokumen). Skrip diuji di job `db-tests` terhadap `ping()` asli pada tiga skenario: sukses (respons PostgREST `{"ok": true, …}`), dilewati tanpa error saat secret kosong, dan **gagal** (non-zero) dengan kunci salah ([run](https://github.com/bayuevm-wq/Streaming/actions/runs/42060874708)). Secret repositori `SUPABASE_URL` dan `SUPABASE_ANON_KEY` belum diisi karena belum ada proyek hosted. Workflow terdaftar aktif di GitHub, tetapi dua kali pemicuan manual lewat `gh workflow run` mendapat HTTP 500 dari API GitHub, jadi eksekusinya di GitHub baru akan terbukti pada jadwal pertama.
 
 Perilaku: non-2xx atau respons tanpa `"ok": true` membuat langkah gagal (setelah 3 percobaan), sehingga GitHub mengirim notifikasi. Bila secret belum diatur, workflow lewat tanpa error.
 
@@ -1038,7 +1017,7 @@ Pertanyaan lama tentang batas penyimpanan global, batas playlist, dan konfirmasi
 
 | Fase (spec §11) | Pekerjaan arsitektur |
 |---|---|
-| 1 Fondasi | Migrasi 0001–0005; **S6 selesai (CI)**; setup Next.js + klien Supabase; konfigurasi Auth (anonim + Turnstile) dan F1; trigger profiles (S5); `mp3.ts`; skrip seed (F9); workflow keep-alive (F20); **spike S1–S5** |
+| 1 Fondasi | **Selesai:** migrasi 0001–0005; spike S6, S5, S3; setup Next.js 16 + klien Supabase + proxy; F1 (server terbukti di CI, UI lolos build); skrip seed F9 (idempoten, teruji); workflow keep-alive F20. **Tersisa:** spike S1, S2, S4; mengisi katalog audio asli; uji browser F1 (Playwright) |
 | 2 Inti mendengar | Layout `(app)`, middleware, halaman beranda/album/artis, pemutar Zustand + audio singleton |
 | 3 Interaksi | RPC `search_all`, like, playlist |
 | 4 Konten | `/unggah` (reserve → TUS → finalize), Route Handler `finalize` dan hapus lagu, Edge Function `cleanup`, `0005_cron.sql` |
