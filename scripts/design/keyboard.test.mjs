@@ -119,7 +119,7 @@ try {
   pass("sudut tajam: tidak ada elemen kartu/sampul/tombol/input/dialog yang membulat");
 
   // --- nomor lagu mengecil di <= 640px ---------------------------------------------------------------
-  const numSize = () => evalJs(`getComputedStyle(document.querySelector('#media div.group > button[aria-label^="Putar Kota"]')).fontSize`);
+  const numSize = () => evalJs(`getComputedStyle(document.querySelector('#media div.group > div:has(> button[aria-label^="Putar Kota"]) > span[aria-hidden]')).fontSize`);
   assert.equal(await numSize(), "30px");
   await cdp("Emulation.setDeviceMetricsOverride", { width: 640, height: 900, deviceScaleFactor: 1, mobile: false });
   await sleep(600);
