@@ -70,7 +70,23 @@ Jalankan lokal: `npm run lint && npx tsc --noEmit && npm run build` dan skrip `n
 
 ## Kualitas
 
-_Diisi dengan angka dari run CI setelah audit Fase 5 selesai (target spec: Lighthouse beranda mobile Performance ≥ 85, Accessibility ≥ 90)._
+Diukur otomatis di CI pada build produksi dengan data contoh sintetis ([run](https://github.com/bayuevm-wq/Streaming/actions/runs/42216852674)), bukan di produksi.
+
+**Lighthouse mobile** (emulasi ponsel + throttling simulasi bawaan; median 3 run per halaman; `scripts/lighthouse.mjs`):
+
+| Halaman | Performance | Accessibility | Best Practices | LCP |
+|---|---|---|---|---|
+| Beranda | 100 | 100 | 100 | 0,9 s |
+| Album | 86 | 100 | 100 | 4,1 s |
+| Artis | 100 | 100 | 100 | 0,9 s |
+| Pencarian | 100 | 100 | 100 | 0,8 s |
+| Library | 100 | 100 | 100 | 0,8 s |
+| Unggah | 100 | 100 | 100 | 0,8 s |
+| Playlist | 84 | 100 | 100 | 4,5 s |
+
+Target spec (beranda mobile Performance ≥ 85, Accessibility ≥ 90) **terpenuhi**; ambang itu dijaga di CI (beranda: keduanya; halaman lain: Accessibility ≥ 90). Catatan jujur: skor Performance bervariasi antar run di runner bersama (satu run bisa 84–86 pada halaman yang sama), dan **album dan playlist konsisten punya LCP ±4 detik** di emulasi ponsel; penyebabnya belum didiagnosis (kandidat: rantai pemuatan sampul/font di halaman berkepala besar). Angka ini bukan jaminan untuk produksi sungguhan dengan sampul asli.
+
+**Aksesibilitas otomatis:** axe-core (WCAG 2.0/2.1/2.2 A dan AA + praktik terbaik) pada 15 layar dan dialog, desktop dan ponsel (`e2e/a11y.spec.ts`): **0 pelanggaran**. Audit pertama menemukan satu jenis pelanggaran nyata (WCAG 2.5.3, nama aksesibel tombol putar tidak memuat nomor urut yang tampak) dan sudah diperbaiki. Kontras (`test:contrast`) dan keyboard (`test:keyboard`) punya uji sendiri. Otomasi hanya menangkap sebagian masalah: uji dengan pembaca layar dan Safari iOS tetap manual.
 
 ## Pengembangan lokal
 
