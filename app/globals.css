@@ -1,26 +1,246 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Breakpoint berbatas tepat. `max-[640px]:` bawaan Tailwind berarti "lebih kecil dari 640px"; spesifikasi kita
+   "640px ke bawah", jadi pakai varian ini: phone: = lebar <= 640px, tablet: = lebar <= 760px (player bar menumpuk). */
+@custom-variant phone (@media (width <= 640px));
+@custom-variant tablet (@media (width <= 760px));
+
+/*
+  Design system "Tinta Cetak" (docs/design-system.md). Mode gelap adalah satu-satunya tampilan.
+  Semua warna di sini diperiksa kontrasnya oleh `npm run test:contrast` (scripts/design/contrast.mjs).
+  Nilai hex tidak ditulis di komponen: pakai utilitas (bg-surface, text-muted, border-control, ...).
+*/
+
+@theme {
+  /* Hapus palet, radius, dan bayangan bawaan Tailwind: hanya token Streaming yang ada, jadi
+     `rounded-lg`, `shadow-md`, `bg-zinc-800` tidak menghasilkan apa pun. Sudut tajam = rounded-none (0). */
+  --color-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --text-*: initial;
+
+  /* Permukaan (dari paling dalam ke paling atas) */
+  --color-ground: #13151a;
+  --color-surface: #1a1d24;
+  --color-raised: #232731;
+
+  /* Garis. hairline = pemisah dekoratif (boleh kontras rendah); control = batas kontrol, wajib >= 3:1 */
+  --color-hairline: #4a5266;
+  --color-control: #7b859c;
+
+  /* Teks */
+  --color-ink: #ece9e2;
+  --color-muted: #a5a9b4;
+
+  /* Aksen kobalt: tombol utama, fokus, lagu yang sedang diputar, progres */
+  --color-accent: #7c97ff;
+  --color-accent-hover: #95aaff;
+  --color-on-accent: #0b1020;
+
+  /* Status: berbeda dari kobalt, dan SELALU dipasang bersama ikon dan teks (komponen StatusMessage) */
+  --color-success: #5ccb8c;
+  --color-success-surface: #13241b;
+  --color-warning: #f2b84b;
+  --color-warning-surface: #2a2210;
+  --color-error: #ff7b72;
+  --color-error-surface: #2b1517;
+
+  --color-scrim: rgb(8 9 12 / 0.74);
+
+  /* Satu-satunya bayangan: untuk yang benar-benar melayang (toast, dialog) */
+  --shadow-float: 0 12px 32px rgb(0 0 0 / 0.5);
+
+  /* Skala huruf. title ke atas memakai font display (Newsreader), sisanya font teks (Schibsted Grotesk) */
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.4;
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.5;
+  --text-body: 1rem;
+  --text-body--line-height: 1.55;
+  --text-lead: 1.125rem;
+  --text-lead--line-height: 1.5;
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.25;
+  --text-heading: 1.75rem;
+  --text-heading--line-height: 1.15;
+  --text-display: 2.5rem;
+  --text-display--line-height: 1.08;
+  --text-hero: 3.5rem;
+  --text-hero--line-height: 1.02;
+  --text-numeral: 1.875rem;
+  --text-numeral--line-height: 1;
+  --text-numeral-sm: 1.25rem;
+  --text-numeral-sm--line-height: 1;
 }
 
+/* Font datang dari next/font (app/layout.tsx) lewat variabel CSS, jadi pakai `inline`. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-newsreader), Georgia, "Times New Roman", serif;
+  --font-body: var(--font-schibsted), system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  color-scheme: dark;
+  /* Gerak */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 360ms;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@layer base {
+  html {
+    background: var(--color-ground);
+  }
+  body {
+    background: var(--color-ground);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Fokus keyboard: garis kobalt 2px dengan jarak 3px, selalu terlihat di semua permukaan */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* ---------- Slider (progres = penggaris, volume = garis) ----------
+     Elemen asli <input type="range">: panah, Home/End, PageUp/PageDown, dan pembaca layar bekerja bawaan. */
+  .slider {
+    --pct: 0%;
+    position: relative;
+    display: block;
+    height: 1.5rem;
+    min-width: 0;
+  }
+  .slider > input[type="range"] {
+    appearance: none;
+    -webkit-appearance: none;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+  .slider > input[type="range"]:focus-visible {
+    outline: none; /* cincin fokus digambar pada pembungkus, supaya sama di semua browser */
+  }
+  .slider:has(> input:focus-visible) {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+  .slider > input[type="range"]::-webkit-slider-runnable-track {
+    height: 2px;
+    background: linear-gradient(to right, var(--color-accent) var(--pct), var(--color-control) var(--pct));
+  }
+  .slider > input[type="range"]::-moz-range-track {
+    height: 2px;
+    background: linear-gradient(to right, var(--color-accent) var(--pct), var(--color-control) var(--pct));
+  }
+  .slider > input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 0.625rem;
+    height: 1rem;
+    margin-top: -0.4375rem;
+    border: 0;
+    border-radius: 0;
+    background: var(--color-accent);
+  }
+  .slider > input[type="range"]::-moz-range-thumb {
+    width: 0.625rem;
+    height: 1rem;
+    border: 0;
+    border-radius: 0;
+    background: var(--color-accent);
+  }
+  .slider > input[type="range"]:hover::-webkit-slider-thumb,
+  .slider > input[type="range"]:active::-webkit-slider-thumb {
+    background: var(--color-accent-hover);
+  }
+  .slider > input[type="range"]:hover::-moz-range-thumb,
+  .slider > input[type="range"]:active::-moz-range-thumb {
+    background: var(--color-accent-hover);
+  }
+  /* Tanda tiap 10% di bawah garis: ciri penggaris pada slider progres */
+  .slider--ruler::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 1px;
+    height: 5px;
+    pointer-events: none;
+    background: repeating-linear-gradient(to right, var(--color-control) 0 1px, transparent 1px 10%);
+    background-size: calc(100% - 1px) 100%;
+    background-repeat: no-repeat;
+  }
+
+  /* ---------- Indikator "sedang diputar" ---------- */
+  .eq {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 0.875rem;
+  }
+  .eq > i {
+    width: 3px;
+    height: 40%;
+    background: currentColor;
+    animation: eq 1s var(--ease-out) infinite;
+  }
+  .eq > i:nth-child(2) {
+    animation-delay: 0.25s;
+  }
+  .eq > i:nth-child(3) {
+    animation-delay: 0.5s;
+  }
+  .eq[data-paused="true"] > i {
+    animation: none;
+    height: 40%;
+  }
+  @keyframes eq {
+    0%,
+    100% {
+      height: 30%;
+    }
+    50% {
+      height: 100%;
+    }
+  }
+  @keyframes skeleton {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
 }

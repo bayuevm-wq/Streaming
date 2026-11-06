@@ -5,10 +5,10 @@ export const metadata: Metadata = { title: "Masuk — Streaming" };
 
 export default function Page() {
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center gap-8 px-4">
-      <div className="space-y-2 text-center">
-        <h1 className="text-3xl font-bold">Streaming</h1>
-        <p className="text-sm text-zinc-500">Dengarkan musik, buat playlist, dan simpan lagu favoritmu.</p>
+    <main className="mx-auto grid min-h-screen w-full max-w-sm content-center gap-8 px-4 py-12">
+      <div className="grid gap-3 border-t-2 border-accent pt-4">
+        <h1 className="font-display text-hero font-medium italic tracking-tight text-ink">Streaming</h1>
+        <p className="text-lead text-muted">Dengarkan musik, buat playlist, dan simpan lagu favoritmu.</p>
       </div>
       <AnonymousSignIn />
     </main>

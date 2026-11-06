@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { publicEnv } from "./env";
 
 // Di Next.js 16 "middleware" bernama Proxy (file `proxy.ts` di root memanggil fungsi ini).
-const PUBLIC_PATHS = ["/masuk"];
+const PUBLIC_PATHS = ["/masuk", "/gaya"]; // /gaya: halaman review design system (statis, tanpa data)
 
 function redirectKeepingCookies(url: URL, from: NextResponse) {
   const res = NextResponse.redirect(url);

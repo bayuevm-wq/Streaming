@@ -4,6 +4,8 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { StatusMessage } from "@/components/ui/status";
 
 type Status = { kind: "idle" } | { kind: "loading" } | { kind: "error"; message: string };
 
@@ -52,38 +54,23 @@ export function AnonymousSignIn() {
 
   if (!siteKey) {
     return (
-      <p role="alert" className="text-sm text-red-600">
+      <StatusMessage kind="error" title="Konfigurasi belum lengkap">
         NEXT_PUBLIC_TURNSTILE_SITE_KEY belum diatur (lihat .env.example).
-      </p>
+      </StatusMessage>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <button
-        type="button"
-        onClick={signIn}
-        disabled={status.kind === "loading"}
-        className="w-full rounded-full bg-emerald-500 px-6 py-3 font-semibold text-black transition hover:bg-emerald-400 disabled:cursor-wait disabled:opacity-60"
-      >
-        {status.kind === "loading" ? "Memverifikasi…" : status.kind === "error" ? "Coba lagi" : "Coba tanpa daftar"}
-      </button>
+    <div className="grid gap-4">
+      <Button size="lg" onClick={signIn} loading={status.kind === "loading"} className="w-full">
+        {status.kind === "loading" ? "Memverifikasi" : status.kind === "error" ? "Coba lagi" : "Coba tanpa daftar"}
+      </Button>
 
-      {status.kind === "error" && (
-        <p role="alert" className="text-sm text-red-600">
-          {status.message}
-        </p>
-      )}
+      {status.kind === "error" && <StatusMessage kind="error" title="Tidak bisa masuk">{status.message}</StatusMessage>}
 
-      <Turnstile
-        ref={turnstile}
-        siteKey={siteKey}
-        options={{ execution: "execute", appearance: "interaction-only" }}
-      />
+      <Turnstile ref={turnstile} siteKey={siteKey} options={{ execution: "execute", appearance: "interaction-only" }} />
 
-      <p className="text-center text-xs text-zinc-500">
-        Mode tamu — data dihapus otomatis setelah 7 hari tidak aktif.
-      </p>
+      <p className="text-small text-muted">Mode tamu: data dihapus otomatis setelah 7 hari tidak aktif.</p>
     </div>
   );
 }
