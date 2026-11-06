@@ -26,7 +26,7 @@ export function Sidebar({ current, playlists, onCreatePlaylist, footer }: Props)
       active ? "border-accent font-semibold text-accent" : "border-transparent text-ink",
     );
   return (
-    <aside className="flex w-64 shrink-0 flex-col gap-6 border-r border-hairline bg-ground p-4" aria-label="Navigasi samping">
+    <aside className="flex h-full w-64 shrink-0 flex-col gap-6 overflow-y-auto border-r border-hairline bg-ground p-4" aria-label="Navigasi samping">
       <p className="px-3 font-display text-heading font-medium italic">Streaming</p>
       <nav aria-label="Utama">
         <ul className="grid gap-0.5">

@@ -880,6 +880,24 @@ Catatan:
 
 ---
 
+### 10.1 Realisasi di kode dan temuan saat implementasi (Fase 2)
+
+| Hal | Berkas | Catatan |
+|---|---|---|
+| Elemen audio singleton | `lib/player/audio.ts` | `globalThis.__streamingAudio`; tidak pernah masuk DOM (diuji: 0 elemen `<audio>`) |
+| Store dan aksi | `lib/player/store.ts` | `playList`, `next`, `prev` (>3 dtk ke awal lagu), `seek`, `setVolume`, `enqueue`, `reset` (dipanggil saat Keluar); token usang dibuang; galat file dilewati dengan notifikasi; `play()` ditolak => jeda tanpa galat |
+| URL audio | `lib/data/catalog.ts`, `lib/storage-url.ts` | Lagu publik: URL publik Storage dibuat **di server** (sinkron di klien, aman untuk Safari). Lagu pribadi: `setUrlResolver()` untuk signed URL (Fase 4) |
+| Kerangka | `components/app/` | `AppShell` (sidebar, header pencarian, konten, `PlayerDock`, `PlayerBoot`, `PlayerNotices`) di `app/(app)/layout.tsx` |
+| Antrean | `components/app/queue-dialog.tsx` | Dialog berisi daftar antrean; mengeklik lagu memutarnya (spec F2) |
+
+Temuan yang tidak terlihat dari desain:
+
+1. **Klik sebelum widget Turnstile siap tidak mengirim permintaan Auth.** `execute()` sebelum skrip Cloudflare termuat tidak melakukan apa-apa, lalu `getResponsePromise` kedaluwarsa dan halaman menampilkan galat umum. Ditemukan E2E (kegagalan acak karena balapan waktu muat); tombol kini `loading` ("Menyiapkan") sampai `onWidgetLoad`.
+2. **Next.js 16 menyimpan halaman sebelumnya tetap ter-*mount* tetapi tersembunyi** (React `Activity`) saat navigasi klien. Konsekuensi: `locator('main h1')` cocok dengan dua elemen; uji harus memakai peran (`getByRole('heading')`) yang mengabaikan elemen tersembunyi. Pemutar tidak terpengaruh.
+3. **`notFound()` mengembalikan HTTP 200**, bukan 404, karena halaman di-*stream* di balik Suspense (`loading.tsx`) dan status sudah terkirim. Tampilan 404-nya rapi (spec F4), tetapi kode status tidak bisa diandalkan sebagai sinyal.
+4. **Sampul dan lagu contoh sintetis** (PNG 1×1 yang direntangkan, MP3 sunyi 90 dtk) hanya untuk CI; MP3 sunyi terverifikasi diputar Chrome dengan `currentTime` naik.
+5. Di ponsel (≤ 760px) player bar + navigasi atas memakan ±220px tinggi layar: layak sebagai sementara, tetapi mini-player ponsel perlu dirancang.
+
 ## 11. Pengambilan data, pencarian, dan rute
 
 **Pola:** Server Components melakukan query langsung ke Supabase dengan JWT user (RLS yang menyaring), tanpa lapisan API buatan sendiri. Mutasi sederhana (like, playlist) dilakukan dari klien dengan supabase-js (RLS); mutasi yang butuh aturan server memakai RPC. Hanya dua Route Handler: `finalize` dan hapus lagu. Tanpa Realtime di MVP: setelah `finalize` klien memanggil `router.refresh()` / pindah ke `/library`.
@@ -913,10 +931,10 @@ Catatan:
 | **Semua uji SQL dan konkurensi di Supabase CLI** | Workflow `.github/workflows/db-tests.yml` pada setiap push dan PR: `supabase start`, `supabase db reset`, `helpers.sql` + `rls_and_limits.test.sql`, `concurrency.sh` | **Lulus** (spike S6). Port ke pgTAP (`supabase test db`) tetap opsional |
 | `finalize` (integrasi) | Terhadap Supabase lokal: MP3 sah, `.exe` berekstensi `.mp3`, ID3 200 KB, terpotong, > 10 MB, bukan reservasi sendiri, dua kali dipanggil | Belum |
 | Job pembersih | Fixture waktu dimajukan (> 15 menit, > 24 jam, > 7 hari) + simulasi kegagalan Storage di tengah | Belum |
-| Navigasi tak memutus audio | Playwright: `audio.currentTime` naik monoton melintasi semua rute internal | Belum |
+| Navigasi tak memutus audio | `e2e/player-persistence.spec.ts` (Playwright, Chrome, build produksi, Supabase lokal): `currentTime` naik melintasi 6 perpindahan rute, tanpa muat ulang penuh, elemen audio dan sumber sama, tak ada `<audio>` di DOM; jeda tetap jeda; "Berikutnya" cepat memutar satu sumber; slider keyboard memajukan audio nyata | **Lulus** ([run](https://github.com/bayuevm-wq/Streaming/actions/runs/42152040175)) |
 | Isolasi dua pengunjung | Playwright dua konteks browser: A menyukai/membuat playlist, B tidak melihatnya | Belum |
 | Anonim + CAPTCHA + trigger profiles + isolasi + kuota via API | `supabase/tests/api/anonymous-signin.test.mjs` di job CI `db-tests` (GoTrue + PostgREST sungguhan, secret uji Turnstile) | **Lulus** ([run](https://github.com/bayuevm-wq/Streaming/actions/runs/42059170726)) |
-| Tombol "Coba tanpa daftar" + widget Turnstile di browser | Playwright dengan kunci uji Turnstile terhadap stack lokal | Belum |
+| Tombol "Coba tanpa daftar" + widget Turnstile di browser | Dijalankan oleh setiap tes E2E (kunci uji Turnstile) | **Lulus** ([run](https://github.com/bayuevm-wq/Streaming/actions/runs/42152040175)). Uji ini menemukan dan memperbaiki satu bug: klik sebelum widget siap tidak mengirim permintaan Auth |
 | Seed F9: 21 skenario aturan katalog (OGG, WAV, >15 MiB, isi palsu, cover, lisensi NC/non-Pixabay-CC0, source wajib, duplikat, path traversal, mode ketat, target non-lokal, `--readme`) | `npm run test:seed` (offline; juga di CI) | **Lulus** |
 | Seed F9 integrasi: unggah ke bucket publik, baris DB lengkap, idempoten (id tetap, tanpa unggah ulang), klien anonim hanya bisa membaca katalog | `supabase/tests/api/seed.test.mjs` di CI dengan berkas sintetis | **Lulus** ([run](https://github.com/bayuevm-wq/Streaming/actions/runs/42060874708)) |
 | Keep-alive F20: sukses, dilewati tanpa secret, gagal dengan kunci salah | `scripts/keepalive.sh` di job `db-tests` terhadap `ping()` asli | **Lulus** ([run](https://github.com/bayuevm-wq/Streaming/actions/runs/42060874708)); eksekusi di GitHub Actions belum (§13.2) |
@@ -1018,7 +1036,7 @@ Pertanyaan lama tentang batas penyimpanan global, batas playlist, dan konfirmasi
 | Fase (spec §11) | Pekerjaan arsitektur |
 |---|---|
 | 1 Fondasi | **Selesai:** migrasi 0001–0005; spike S6, S5, S3; setup Next.js 16 + klien Supabase + proxy; F1 (server terbukti di CI, UI lolos build); skrip seed F9 (idempoten, teruji); workflow keep-alive F20. **Tersisa:** spike S1, S2, S4; mengisi katalog audio asli; uji browser F1 (Playwright) |
-| 2 Inti mendengar | Layout `(app)`, middleware, halaman beranda/album/artis, pemutar Zustand + audio singleton |
+| 2 Inti mendengar | **Selesai:** layout `(app)` (sidebar, header pencarian, PlayerBar/PlayerBoot, antrean, notifikasi), `proxy.ts`, beranda/album/artis, pemutar Zustand + audio singleton (§10), uji logika (11) dan E2E (7). **Sementara:** data dari katalog contoh sintetis di CI sampai `catalog.json` diisi; navigasi ponsel (`MobileNav`) dan player bar ponsel belum dirancang. **Catatan temuan:** lihat §10.1 |
 | 3 Interaksi | RPC `search_all`, like, playlist |
 | 4 Konten | `/unggah` (reserve → TUS → finalize), Route Handler `finalize` dan hapus lagu, Edge Function `cleanup`, `0005_cron.sql` |
 | 5 Poles dan rilis | E2E Playwright, Lighthouse, README (tabel sumber/lisensi seed), deploy |
