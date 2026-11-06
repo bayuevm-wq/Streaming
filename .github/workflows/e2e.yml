@@ -79,6 +79,11 @@ jobs:
       - name: Playwright
         run: npx playwright test
 
+      # Lighthouse mobile pada halaman area login (median 3 run). Ambang: beranda Performance >= 85 dan Accessibility >= 90
+      # (spec); halaman lain Accessibility >= 90. Hasil JSON dan ringkasan ada di artefak e2e-hasil/lighthouse.
+      - name: Lighthouse
+        run: node scripts/lighthouse.mjs
+
       - name: Log aplikasi (bila gagal)
         if: failure()
         run: tail -n 80 next.log || true

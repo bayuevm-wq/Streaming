@@ -95,6 +95,7 @@ for (const vp of [
     await uploadOk(page, { title: "Lagu Ketiga", artist: "Pengunggah" });
     await page.goto("/unggah");
     await expect(page.getByText("Slot penuh (3/3)")).toBeVisible();
+    await page.getByText("Slot penuh (3/3)").scrollIntoViewIfNeeded();
     await shot("fase4", "unggah-kuota-penuh");
     expect(await noHScroll(), "unggah penuh: scroll horizontal").toBe(true);
 
@@ -129,6 +130,7 @@ for (const vp of [
     exe.set([0x4d, 0x5a, 0x90, 0x00], 0);
     await fillAndSubmit(page, { name: "pemasang.mp3", bytes: exe, title: "Bukan Lagu", artist: "Pengunggah" });
     await expect(page.getByTestId("upload-error")).toHaveAttribute("data-code", "not_mp3", { timeout: 60_000 });
+    await page.getByTestId("upload-error").scrollIntoViewIfNeeded();
     await shot("fase4", "unggah-error-mp3-palsu");
     expect(await noHScroll(), "unggah error: scroll horizontal").toBe(true);
   });
