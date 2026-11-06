@@ -45,6 +45,7 @@ test("pencarian: tanpa hasil menampilkan keadaan kosong", async ({ page }) => {
 
 test("suka: hati di baris lagu, sinkron di player bar, muncul di /disukai, unlike tanpa menghentikan pemutaran", async ({ page }) => {
   await signInAnonymously(page);
+  await page.goto("/cari?q=Lagu"); // beranda memakai kartu; baris lagu (dengan hati) ada di hasil pencarian/album/artis
   const row = page.getByRole("button", { name: /^Sukai e2e Lagu/ }).first();
   await expect(row).toBeVisible();
   const label = (await row.getAttribute("aria-label"))!; // "Sukai e2e Lagu N"
