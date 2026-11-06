@@ -55,6 +55,14 @@ let urlResolver: UrlResolver = async (t) => t.audioUrl;
 export function setUrlResolver(fn: UrlResolver) {
   urlResolver = fn;
 }
+/**
+ * Jalur cepat SINKRON (mis. cache signed URL lagu pribadi). Bila mengembalikan URL, `play()` dipanggil tanpa `await`
+ * jaringan di antara ketukan dan pemutaran, sehingga Safari/iOS tidak kehilangan user activation (spike S4).
+ */
+let syncResolver: ((track: Track) => string | null) | null = null;
+export function setSyncUrlResolver(fn: ((track: Track) => string | null) | null) {
+  syncResolver = fn;
+}
 
 let noticeSeq = 0;
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -182,11 +190,13 @@ async function load(index: number) {
   usePlayer.setState({ token: mine, index, status: "loading" });
   useProgress.setState({ position: 0, duration: track.durationSec });
 
-  let url: string | null = null;
-  try {
-    url = await urlResolver(track);
-  } catch {
-    url = null;
+  let url: string | null = syncResolver?.(track) ?? null;
+  if (!url) {
+    try {
+      url = await urlResolver(track);
+    } catch {
+      url = null;
+    }
   }
   if (usePlayer.getState().token !== mine) return; // permintaan lain mendahului (klik "Berikutnya" berulang)
   if (!url) return skipBroken(index);

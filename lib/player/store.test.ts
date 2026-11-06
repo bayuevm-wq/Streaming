@@ -68,7 +68,7 @@ class FakeAudio extends EventTarget {
 (globalThis as unknown as { Audio: unknown }).Audio = FakeAudio;
 
 const { getAudio } = await import("./audio.ts");
-const { usePlayer, useProgress, initPlayer, setUrlResolver } = await import("./store.ts");
+const { usePlayer, useProgress, initPlayer, setUrlResolver, setSyncUrlResolver } = await import("./store.ts");
 import type { Track } from "./store.ts";
 
 const tracks: Track[] = [1, 2, 3].map((n) => ({
@@ -268,6 +268,38 @@ assert.equal(P().index, 2);
 assert.equal(audio().src, "https://x/3.mp3");
 assert.equal(count, 2, `dua lagu rusak = dua notifikasi, dapat ${count}`);
 pass("[A rusak, B rusak, C]: berakhir di C dengan dua notifikasi (satu per lagu rusak)");
+
+// 10e. S4 (Safari): lagu pribadi dengan URL di cache diputar SINKRON di panggilan playList (tanpa await jaringan),
+// sedangkan tanpa cache memakai resolver async. Uji ini membuktikan jalurnya; perilaku Safari sungguhan diuji di WebKit.
+{
+  const priv: Track = { id: "p1", title: "Pribadi", artist: "Aku", coverUrl: null, audioUrl: null, durationSec: 60, visibility: "private" };
+  let asyncCalls = 0;
+  setUrlResolver(async () => {
+    asyncCalls++;
+    await tick(20);
+    return "https://x/signed-lambat.mp3";
+  });
+  setSyncUrlResolver((t) => (t.id === "p1" ? "https://x/signed-cache.mp3" : null));
+  P().reset();
+  audio().mode = "ok";
+  const p = P().playList([priv], 0);
+  // SEBELUM promise apa pun diselesaikan: src sudah diisi dan play() sudah dipanggil (masih di dalam "ketukan")
+  assert.equal(audio().src, "https://x/signed-cache.mp3");
+  assert.equal(audio().played.at(-1), "https://x/signed-cache.mp3");
+  assert.equal(asyncCalls, 0);
+  await p;
+
+  setSyncUrlResolver(() => null); // cache kosong: jalur lambat
+  P().reset();
+  const q = P().playList([priv], 0);
+  assert.equal(audio().src === "https://x/signed-lambat.mp3", false, "tanpa cache, src belum terisi saat panggilan kembali");
+  await q;
+  assert.equal(audio().src, "https://x/signed-lambat.mp3");
+  assert.equal(asyncCalls, 1);
+  setSyncUrlResolver(null);
+  setUrlResolver(async (t) => t.audioUrl);
+}
+pass("S4: URL pribadi ter-cache diputar sinkron; tanpa cache memakai resolver async");
 
 // 11. hanya satu elemen audio
 assert.equal(getAudio(), getAudio());

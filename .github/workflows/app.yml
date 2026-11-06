@@ -70,3 +70,5 @@ jobs:
         run: npm run test:format
       - name: Uji unit aturan playlist (nama, batas, pesan galat)
         run: npm run test:playlists
+      - name: Uji unit cache URL lagu pribadi (fallback Safari, S4)
+        run: npm run test:private-url
