@@ -20,7 +20,7 @@ Stack produksi: **Vercel** (Next.js) + **Supabase** (Postgres, Auth, Storage, Ed
 ## 0. Prasyarat
 
 - [ ] Akun: GitHub (sudah), Vercel, Supabase, Cloudflare.
-- [ ] **Isi `scripts/seed/catalog.json` dengan lagu asli** (minimal 15 lagu, 4 album, 4 artis) dari Pixabay Music (Pixabay Content License) atau CC0, **bukan** NC. Letakkan berkas di `scripts/seed/audio/` dan `scripts/seed/covers/` (tidak masuk git). Panduan: [`scripts/seed/README.md`](../scripts/seed/README.md). Validasi lokal tanpa jaringan: `npm run seed:check`.
+- [ ] **Isi `scripts/seed/catalog.json` dengan lagu asli** (minimal 15 lagu, 4 album, 4 artis) dari Free Music Archive atau Incompetech/Kevin MacLeod dengan lisensi **hanya CC0 1.0, CC BY 4.0, atau CC BY-SA 4.0** (dicek di halaman lagu; NC, ND, dan FMA-Limited dilarang; Pixabay tidak dipakai karena melarang distribusi "standalone"). Setiap lagu wajib punya `license`, `source_url`, dan `credit`; kreditnya tampil di aplikasi (album/lagu dan `/kredit`). Letakkan berkas di `scripts/seed/audio/` dan `scripts/seed/covers/` (tidak masuk git). Panduan: [`scripts/seed/README.md`](../scripts/seed/README.md). Validasi lokal tanpa jaringan: `npm run seed:check`.
 - [ ] Setelah valid: `node scripts/seed.ts --dry-run --readme` memperbarui tabel sumber/lisensi di README, lalu commit.
 - [ ] Putuskan nama domain (cukup `*.vercel.app` untuk demo).
 

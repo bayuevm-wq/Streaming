@@ -4,7 +4,7 @@ Katalog publik hanya diisi lewat skrip ini (service role); klien tidak punya aks
 
 ## Mengisi katalog
 
-1. Unduh minimal **15 lagu** dari [Pixabay Music](https://pixabay.com/music/) (Pixabay Content License) atau sumber **CC0**. **Jangan** memakai lagu berlisensi NC (non-komersial).
+1. Unduh minimal **15 lagu** dari [Free Music Archive](https://freemusicarchive.org/) atau [Incompetech](https://incompetech.com/) (Kevin MacLeod). Lisensi dibaca **di halaman lagu itu sendiri**, dan hanya **CC0 1.0, CC BY 4.0, atau CC BY-SA 4.0** yang boleh. **NC, ND, dan FMA-Limited dilarang**; Pixabay tidak dipakai (melarang distribusi "standalone"). Bila lisensi tidak jelas, lewati lagunya.
 2. Taruh berkas di `scripts/seed/audio/` (MP3 atau M4A, maks 15 MiB, disarankan 128–192 kbps) dan cover di `scripts/seed/covers/` (JPG/PNG/WebP, maks 2 MiB). Dua folder ini **tidak masuk git**.
 3. Isi `scripts/seed/catalog.json` (bentuk di bawah): minimal 4 artis, 4 album, 15 lagu; setiap album punya cover, dan setiap lagu punya cover sendiri atau cover albumnya.
 4. Validasi tanpa menyentuh jaringan: `npm run seed:check`.
@@ -23,13 +23,13 @@ Katalog publik hanya diisi lewat skrip ini (service role); klien tidak punya aks
     "trackNo": 1,
     "file": "audio/lagu.mp3",
     "cover": "covers/lagu.jpg",
-    "source": "https://pixabay.com/music/...",
-    "license": "Pixabay Content License"
+    "source": "https://freemusicarchive.org/music/...",
+    "license": "CC BY 4.0"
   }]
 }
 ```
 
-`license` hanya boleh `Pixabay Content License` atau `CC0 1.0`. `key` menjadi `seed_key` sehingga menjalankan ulang skrip tidak menggandakan data.
+`license` hanya boleh `CC0 1.0`, `CC BY 4.0`, atau `CC BY-SA 4.0` (ejaan lain seperti `cc-by-4.0` ditoleransi; NC, ND, FMA-Limited, Pixabay, dan versi CC lama ditolak oleh validator). `key` menjadi `seed_key` sehingga menjalankan ulang skrip tidak menggandakan data.
 
 ## Aturan yang diperiksa dari isi berkas (bukan sekadar nama)
 

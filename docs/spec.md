@@ -211,7 +211,7 @@ Proyek portofolio perlu menunjukkan kemampuan membangun aplikasi full-stack yang
 
 **Acceptance criteria**
 - [ ] Skrip seed idempoten (dijalankan ulang tidak membuat duplikat) menghasilkan ≥ 15 lagu, ≥ 4 album, ≥ 4 artis, lengkap dengan cover.
-- [ ] Sumber audio seed: **Pixabay Music atau CC0**; lagu berlisensi NC (non-komersial) **tidak dipakai**. Sumber dan lisensi **tiap lagu** dicatat di `README`.
+- [ ] Sumber audio seed (Free Music Archive dan Incompetech/Kevin MacLeod): **hanya CC0 1.0, CC BY 4.0, atau CC BY-SA 4.0**, dicek di halaman lagu itu sendiri (bukan hanya halaman album). **NC, ND, dan FMA-Limited dilarang**; Pixabay tidak dipakai (melarang distribusi "standalone", tidak cocok untuk aplikasi streaming). Skrip seed menolak lisensi lain. Sumber (URL halaman lagu), lisensi, dan **kredit** tiap lagu dicatat di `README` dan **ditampilkan di aplikasi** (halaman album/lagu dan halaman `/kredit`), sebagaimana dipersyaratkan CC BY dan CC BY-SA.
 - [ ] **Aturan format katalog** (berlaku juga untuk F19): hanya **MP3 dan M4A**, maks **15 MB** per file, disarankan **128–192 kbps**. Skrip seed menolak file di luar aturan ini dengan pesan jelas.
 - [ ] Seed dimasukkan ke **katalog publik** lewat **skrip seed dengan service role** (dijalankan lokal/CI, tidak pernah lewat klien). Ini satu-satunya cara mengisi katalog di MVP.
 - [ ] Seed tidak mencakup like atau playlist (itu milik tiap user); empty state Lagu Disukai, Playlist, dan Library pribadi harus tampak baik untuk pengunjung baru.
@@ -322,7 +322,7 @@ Karena ini portofolio, metrik diukur dengan daftar periksa dan uji manual, bukan
 7. **Aktivitas akun:** kolom `last_seen_at` sendiri, diperbarui maksimal 1× per jam; dasar penghapusan akun anonim tidak aktif 7 hari.
 8. **Lagu pribadi kedaluwarsa saat diputar:** dibiarkan selesai; lagu kedaluwarsa lain di antrean dilewati.
 9. **Format katalog (F9 dan F19):** MP3 dan M4A saja (OGG dihapus karena dukungan Safari tidak konsisten), maks 15 MB, disarankan 128–192 kbps.
-10. **Sumber seed:** Pixabay Music atau CC0; hindari lagu berlisensi NC; sumber dan lisensi tiap lagu dicatat di README.
+10. **Sumber seed (dikoreksi):** hanya **CC0 1.0, CC BY 4.0, atau CC BY-SA 4.0** dari Free Music Archive dan Incompetech/Kevin MacLeod; NC, ND, dan FMA-Limited dilarang. Pixabay dicoret karena lisensinya melarang distribusi "standalone" (tidak cocok untuk aplikasi streaming). Sumber, lisensi, dan kredit tiap lagu dicatat di README dan ditampilkan di aplikasi (halaman album/lagu dan `/kredit`).
 11. **State pemutar:** Zustand, dengan satu elemen audio di luar siklus render React.
 12. **Batas penyimpanan pribadi global:** 500 MB; bila penuh, upload pengunjung ditutup sementara dengan pesan jelas (F5).
 13. **Batas playlist:** maks 20 playlist per user dan 200 lagu per playlist, ditegakkan di database (F8).

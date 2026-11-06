@@ -38,6 +38,14 @@ function expectFail(name, mutate, expected, extraArgs = ["--relaxed"]) {
   assert.doesNotMatch(r.stderr, /PERINGATAN/); // sampel 128 kbps: tidak ada peringatan bitrate
   pass("katalog contoh valid lolos (mode relaxed)");
 }
+for (const license of ["CC0 1.0", "CC BY 4.0", "CC BY-SA 4.0", "cc by-sa 4.0", "CC-BY-4.0"]) {
+  const s = sample();
+  s.catalog.songs[0].license = license;
+  s.save();
+  const r = run(["--dry-run", "--relaxed", "--catalog", s.file]);
+  assert.equal(r.status, 0, `${license}: ${r.stderr}`);
+  pass(`lisensi ${license} diterima`);
+}
 {
   // 12,8 MB: di atas batas pengunjung (10 MiB) tetapi di bawah batas katalog (15 MiB).
   const s = sample();
@@ -79,7 +87,13 @@ expectFail("cover di atas 2 MiB ditolak", (s) => {
 // --- negatif: lisensi dan sumber -------------------------------------------------------------------
 expectFail("lisensi NC ditolak", (s) => { s.catalog.songs[0].license = "CC BY-NC 4.0"; }, /non-komersial/);
 expectFail("lisensi NC lain (NC-SA) ditolak", (s) => { s.catalog.songs[0].license = "CC-BY-NC-SA"; }, /non-komersial/);
-expectFail("lisensi di luar Pixabay/CC0 ditolak", (s) => { s.catalog.songs[0].license = "MIT"; }, /tidak diizinkan/);
+expectFail("lisensi di luar tiga yang diizinkan ditolak (MIT)", (s) => { s.catalog.songs[0].license = "MIT"; }, /hanya CC0 1.0, CC BY 4.0, CC BY-SA 4.0/);
+expectFail("Pixabay Content License ditolak (melarang distribusi standalone)", (s) => { s.catalog.songs[0].license = "Pixabay Content License"; }, /tidak diizinkan/);
+expectFail("lisensi ND ditolak", (s) => { s.catalog.songs[0].license = "CC BY-ND 4.0"; }, /tanpa-turunan/);
+expectFail("lisensi FMA-Limited ditolak", (s) => { s.catalog.songs[0].license = "FMA-Limited"; }, /FMA-Limited/);
+expectFail("versi CC lama (CC BY 3.0) ditolak", (s) => { s.catalog.songs[0].license = "CC BY 3.0"; }, /tidak diizinkan/);
+expectFail("CC BY-SA 3.0 ditolak", (s) => { s.catalog.songs[0].license = "CC BY-SA 3.0"; }, /tidak diizinkan/);
+expectFail("lisensi tak jelas ditolak", (s) => { s.catalog.songs[0].license = "bebas dipakai"; }, /tidak diizinkan/);
 expectFail("source wajib", (s) => { delete s.catalog.songs[0].source; }, /source wajib/);
 expectFail("license wajib", (s) => { delete s.catalog.songs[0].license; }, /license wajib/);
 

@@ -125,7 +125,7 @@ Catatan: ini Next.js 16 (`proxy.ts` menggantikan middleware, Cache Components ak
 
 ## Sumber audio katalog
 
-Setiap lagu seed dicatat sumber dan lisensinya di bawah (dihasilkan `node scripts/seed.ts --dry-run --readme` dari `scripts/seed/catalog.json`). Hanya Pixabay Content License atau CC0; lagu NC tidak dipakai. Lihat [`scripts/seed/README.md`](scripts/seed/README.md) untuk cara mengisi katalog.
+Setiap lagu seed dicatat sumber dan lisensinya di bawah (dihasilkan `node scripts/seed.ts --dry-run --readme` dari `scripts/seed/catalog.json`). Hanya **CC0 1.0, CC BY 4.0, atau CC BY-SA 4.0** (Free Music Archive dan Incompetech/Kevin MacLeod); NC, ND, dan FMA-Limited tidak dipakai, dan Pixabay dicoret karena melarang distribusi "standalone". Lihat [`scripts/seed/README.md`](scripts/seed/README.md) untuk cara mengisi katalog.
 
 <!-- seed-sources:start -->
 _Katalog belum diisi._

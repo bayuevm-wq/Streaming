@@ -2,7 +2,7 @@
 //   - format: MP3 dan M4A saja (OGG tidak didukung: dukungan Safari tidak konsisten)
 //   - ukuran: maks 15 MiB per file audio, 2 MiB per cover
 //   - bitrate: disarankan 128-192 kbps (peringatan, bukan kegagalan)
-//   - lisensi: Pixabay Content License atau CC0; lisensi NC (non-komersial) ditolak
+//   - lisensi: HANYA CC0 1.0, CC BY 4.0, atau CC BY-SA 4.0. NC, ND, FMA-Limited, Pixabay, versi CC lain, dan yang tak dikenal ditolak
 import { checkMp3, checkImage, LIMITS } from "../../lib/audio/mp3.ts";
 
 export const CATALOG_MAX_BYTES = 15 * 1024 * 1024;
@@ -10,14 +10,14 @@ export const COVER_MAX_BYTES = 2 * 1024 * 1024;
 export const RECOMMENDED_KBPS = { min: 128, max: 192 } as const;
 export const MIN_COUNTS = { songs: 15, albums: 4, artists: 4 } as const;
 
-const ALLOWED_LICENSES = [
-  "pixabay content license",
-  "cc0",
-  "cc0 1.0",
-  "cc0 1.0 universal",
-  "public domain (cc0)",
-];
+/** Lisensi yang boleh dipakai katalog (ejaan baku). */
+export const ALLOWED_LICENSES = ["CC0 1.0", "CC BY 4.0", "CC BY-SA 4.0"] as const;
+/** Pembandingan toleran spasi, huruf besar/kecil, dan tanda hubung/garis bawah ("cc-by-sa-4.0" = "CC BY-SA 4.0"). */
+const canon = (s: string) => s.trim().toLowerCase().replace(/[-_]+/g, " ").replace(/s+/g, " ");
+const ALLOWED_CANON = new Set(ALLOWED_LICENSES.map(canon));
 const NON_COMMERCIAL = /(^|[^a-z])nc([^a-z]|$)|non-?commercial/i;
+const NO_DERIVATIVES = /(^|[^a-z])nd([^a-z]|$)|no-?derivs?|no ?derivatives/i;
+const FMA_LIMITED = /fma|limited/i;
 
 export type CatalogSong = {
   key: string;
@@ -39,8 +39,10 @@ export type Catalog = {
 export function licenseProblem(license: string): string | null {
   const l = license.trim();
   if (NON_COMMERCIAL.test(l)) return `lisensi non-komersial (NC) tidak boleh dipakai: "${license}"`;
-  if (!ALLOWED_LICENSES.includes(l.toLowerCase())) {
-    return `lisensi "${license}" tidak diizinkan; hanya Pixabay Content License atau CC0`;
+  if (NO_DERIVATIVES.test(l)) return `lisensi tanpa-turunan (ND) tidak boleh dipakai: "${license}"`;
+  if (FMA_LIMITED.test(l)) return `lisensi FMA-Limited tidak boleh dipakai: "${license}"`;
+  if (!ALLOWED_CANON.has(canon(l))) {
+    return `lisensi "${license}" tidak diizinkan; hanya ${ALLOWED_LICENSES.join(", ")}`;
   }
   return null;
 }
