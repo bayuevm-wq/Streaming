@@ -5,6 +5,7 @@ import { Cover } from "@/components/ui/cover";
 import { FullPlayer } from "@/components/ui/full-player";
 import { MiniPlayer } from "@/components/ui/mini-player";
 import { PlayerBar } from "@/components/ui/player-bar";
+import { useLikes } from "@/lib/likes/store";
 import { usePlayer, useProgress } from "@/lib/player/store";
 import { QueueDialog } from "./queue-dialog";
 
@@ -20,10 +21,15 @@ export function PlayerDock() {
   const { toggle, next, prev, seek, setVolume } = usePlayer.getState();
   const position = useProgress((s) => s.position);
   const duration = useProgress((s) => s.duration);
+  const likedIds = useLikes((s) => s.ids);
   const [queueOpen, setQueueOpen] = useState(false);
   const [fullOpen, setFullOpen] = useState(false);
 
   const playing = status === "playing";
+  const liked = track ? likedIds.has(track.id) : false;
+  const toggleLike = () => {
+    if (track) void useLikes.getState().toggle(track.id);
+  };
   const total = duration || track?.durationSec || 0;
 
   return (
@@ -43,6 +49,8 @@ export function PlayerDock() {
             onSeek={seek}
             onVolume={setVolume}
             onOpenQueue={() => setQueueOpen(true)}
+            liked={liked}
+            onToggleLike={toggleLike}
           />
           <MiniPlayer
             className="hidden tablet:block"
@@ -66,6 +74,8 @@ export function PlayerDock() {
             onNext={() => void next()}
             onSeek={seek}
             onOpenQueue={() => setQueueOpen(true)}
+            liked={liked}
+            onToggleLike={toggleLike}
           />
         </>
       ) : null}

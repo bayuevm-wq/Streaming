@@ -315,3 +315,17 @@ select public.reject_upload(:'rid', :B);
 select t.check('T19h reject_upload tidak memperpanjang reservasi yang sudah lama kedaluwarsa',
   (select expires_at < now() - interval '59 minutes' from public.songs where id = :'rid'));
 select t.logout();
+
+\echo == T20 user_id terisi otomatis dari JWT (migrasi 0006) ==
+select t.login(:A);
+insert into public.likes (song_id) select id from public.songs where title = 'Bulk 1';
+select t.check('T20a likes.user_id terisi dari JWT tanpa dikirim klien',
+  (select count(*) from public.likes where user_id = :A and song_id = (select id from public.songs where title = 'Bulk 1')) = 1);
+select t.logout();
+select t.login(:B);
+insert into public.playlists (name) values ('Tanpa user_id');
+select t.check('T20b playlists.user_id terisi dari JWT tanpa dikirim klien',
+  (select count(*) from public.playlists where name = 'Tanpa user_id' and user_id = :B) = 1);
+select t.err('T20c user_id palsu tetap ditolak RLS walau ada default',
+  format($f$insert into public.likes (user_id, song_id) select %L, id from public.songs where title = 'Bulk 2'$f$, :A::text), 'row-level security');
+select t.logout();

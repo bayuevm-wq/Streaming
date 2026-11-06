@@ -3,7 +3,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Time } from "./time";
 import { formatTime } from "@/lib/format";
-import { IconClose, IconNext, IconPause, IconPlay, IconPrev, IconQueue } from "./icons";
+import { IconClose, IconHeart, IconNext, IconPause, IconPlay, IconPrev, IconQueue } from "./icons";
 import { Slider } from "./slider";
 
 type Props = {
@@ -18,6 +18,9 @@ type Props = {
   onNext: () => void;
   onSeek: (seconds: number) => void;
   onOpenQueue: () => void;
+  /** Opsional; tombol suka tampil hanya bila `onToggleLike` diberikan. */
+  liked?: boolean;
+  onToggleLike?: () => void;
 };
 
 /**
@@ -25,7 +28,7 @@ type Props = {
  * mini-player). Sampul besar, slider posisi (penggaris, bisa digeser dengan panah), kontrol besar, dan tombol antrean.
  * Volume tidak ada: diatur perangkat.
  */
-export function FullPlayer({ open, onClose, track, playing, position, duration, onTogglePlay, onPrev, onNext, onSeek, onOpenQueue }: Props) {
+export function FullPlayer({ open, onClose, track, playing, position, duration, onTogglePlay, onPrev, onNext, onSeek, onOpenQueue, liked, onToggleLike }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -90,7 +93,18 @@ export function FullPlayer({ open, onClose, track, playing, position, duration, 
           </button>
         </div>
 
-        <div className="mt-auto flex justify-center">
+        <div className="mt-auto flex items-center justify-center gap-2">
+          {onToggleLike ? (
+            <button
+              type="button"
+              onClick={onToggleLike}
+              aria-pressed={Boolean(liked)}
+              aria-label={liked ? "Batal suka lagu ini" : "Sukai lagu ini"}
+              className={`grid size-11 place-items-center text-title hover:bg-raised ${liked ? "text-accent" : "text-muted"}`}
+            >
+              <IconHeart filled={Boolean(liked)} />
+            </button>
+          ) : null}
           <button type="button" onClick={onOpenQueue} className="flex items-center gap-2 px-4 py-2 text-body hover:bg-raised">
             <IconQueue className="text-lead" />
             Antrean

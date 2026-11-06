@@ -15,6 +15,7 @@
     "test:keyboard": "node scripts/design/keyboard.test.mjs",
     "test:cn": "node lib/cn.test.ts",
     "test:player": "node lib/player/store.test.ts",
+    "test:likes": "node lib/likes/store.test.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

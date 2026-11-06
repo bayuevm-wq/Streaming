@@ -116,3 +116,25 @@ export async function getArtist(id: string) {
     tracks: (songs.data as unknown as SongRow[]).map(toTrack),
   };
 }
+
+/** Id semua lagu yang disukai pengguna ini (RLS: hanya milik sendiri). Dipakai layout untuk mengisi store suka. */
+export async function getLikedIds(): Promise<string[]> {
+  const db = await createClient();
+  const { data, error } = await db.from("likes").select("song_id");
+  if (error) throw new Error(`Gagal memuat daftar suka: ${error.message}`);
+  return (data ?? []).map((r) => r.song_id as string);
+}
+
+/** Lagu yang disukai, terbaru dulu. Lagu yang tak lagi terlihat (mis. pribadi kedaluwarsa) tersaring oleh RLS. */
+export async function getLikedTracks(): Promise<Track[]> {
+  const db = await createClient();
+  const { data, error } = await db
+    .from("likes")
+    .select(`created_at, song:songs(${SONG_SELECT})`)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`Gagal memuat lagu disukai: ${error.message}`);
+  return (data as unknown as { song: Ref<SongRow> }[])
+    .map((r) => one(r.song))
+    .filter((s): s is SongRow => s !== null)
+    .map(toTrack);
+}

@@ -64,3 +64,5 @@ jobs:
       # Logika pemutar (antrean, auto-lanjut, balapan "Berikutnya", galat, autoplay ditolak) dengan audio palsu.
       - name: Uji logika pemutar
         run: npm run test:player
+      - name: Uji unit suka (UI optimistis + rollback)
+        run: npm run test:likes
