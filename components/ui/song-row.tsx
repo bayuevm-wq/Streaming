@@ -38,29 +38,34 @@ export function SongRow({ index, title, artist, album, durationSec, cover, playi
         playing && "bg-surface",
       )}
     >
-      <button
-        type="button"
-        onClick={onTogglePlay}
-        aria-label={`${showPause ? "Jeda" : "Putar"} ${title}`}
-        className={cn(
-          "grid h-10 place-items-center text-right font-display text-numeral font-normal italic phone:text-numeral-sm",
-          playing ? "text-accent" : "text-muted hover:text-ink",
-        )}
-      >
-        {playing ? (
-          <span className="text-lead not-italic">{showPause ? <IconPause /> : <IconPlay />}</span>
-        ) : (
-          <>
-            {/* nomor dekoratif: aria-hidden agar teks tampak tidak "hilang" dari nama aksesibel tombol (WCAG 2.5.3 label in name) */}
-            <span aria-hidden="true" className="group-hover:hidden group-focus-within:hidden">
-              {index}
-            </span>
-            <span className="hidden text-lead not-italic group-hover:block group-focus-within:block">
+      {/*
+        Sel nomor/putar. Nomor ada DI LUAR tombol (dekoratif, tidak menangkap klik) sehingga tombol hanya berisi ikon dan
+        tidak punya teks tampak yang harus ada di nama aksesibelnya (WCAG 2.5.3 label in name; axe label-content-name-mismatch).
+      */}
+      <div className="relative h-10">
+        <button
+          type="button"
+          onClick={onTogglePlay}
+          aria-label={`${showPause ? "Jeda" : "Putar"} ${title}`}
+          className={cn("absolute inset-0 grid place-items-center text-lead", playing ? "text-accent" : "text-muted hover:text-ink")}
+        >
+          {playing ? (
+            <span>{showPause ? <IconPause /> : <IconPlay />}</span>
+          ) : (
+            <span className="hidden group-hover:block group-focus-within:block">
               <IconPlay />
             </span>
-          </>
+          )}
+        </button>
+        {playing ? null : (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 grid place-items-center font-display text-numeral font-normal text-muted italic group-hover:hidden group-focus-within:hidden phone:text-numeral-sm"
+          >
+            {index}
+          </span>
         )}
-      </button>
+      </div>
       <div className="size-11 phone:size-10">{cover}</div>
       <div className="min-w-0">
         <p className={cn("truncate font-display text-title font-medium phone:text-body", playing ? "text-accent" : "text-ink")}>{title}</p>
