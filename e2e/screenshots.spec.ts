@@ -35,7 +35,16 @@ for (const vp of [
     await page.screenshot({ path: `${OUT}/${vp.name}-artis.png` });
     expect(await noHScroll(), "artis: scroll horizontal").toBe(true);
 
-    await playerRegion(page).getByRole("button", { name: "Buka antrean" }).click();
+    if (vp.width <= 760) {
+      // Ponsel: mini-player -> pemutar penuh -> antrean
+      await playerRegion(page).getByRole("button", { name: /^Buka pemutar/ }).click();
+      const full = page.getByRole("dialog", { name: "Pemutar" });
+      await expect(full).toBeVisible();
+      await page.screenshot({ path: `${OUT}/${vp.name}-pemutar-penuh.png` });
+      await full.getByRole("button", { name: "Antrean" }).click();
+    } else {
+      await playerRegion(page).getByRole("button", { name: "Buka antrean" }).click();
+    }
     await expect(page.getByRole("dialog", { name: "Antrean" })).toBeVisible();
     await page.screenshot({ path: `${OUT}/${vp.name}-antrean.png` });
   });

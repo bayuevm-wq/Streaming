@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { BottomNav } from "@/components/ui/bottom-nav";
 import { Button } from "@/components/ui/button";
 import { Cover } from "@/components/ui/cover";
 import { Dialog } from "@/components/ui/dialog";
+import { FullPlayer } from "@/components/ui/full-player";
 import { MediaCard } from "@/components/ui/media-card";
+import { MiniPlayer } from "@/components/ui/mini-player";
 import { PlayerBar } from "@/components/ui/player-bar";
 import { SongCard } from "@/components/ui/song-card";
 import { SongRow } from "@/components/ui/song-row";
@@ -190,6 +193,40 @@ export function OverlayDemo() {
           </Toast>
         ))}
       </ToastRegion>
+    </div>
+  );
+}
+
+/** Tampilan ponsel: konten, MiniPlayer, lalu BottomNav (tinggi total sekitar 120px). Ketuk mini-player untuk pemutar penuh. */
+export function MobileDemo() {
+  const [playing, setPlaying] = useState(true);
+  const [full, setFull] = useState(false);
+  const [pos, setPos] = useState(84);
+  const song = SAMPLE_SONGS[0];
+  const track = { title: song.title, artist: song.artist, cover: cover(song.cover) };
+  return (
+    <div className="grid gap-3">
+      <div className="mx-auto flex h-[34rem] w-full max-w-[390px] flex-col border border-control bg-ground">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          <p className="font-display text-heading font-medium italic">Beranda</p>
+          <p className="mt-2 text-small text-muted">Area konten. Di bawahnya: mini-player satu baris dan navigasi bawah, bukan player bar setinggi ±220px.</p>
+        </div>
+        <MiniPlayer track={track} playing={playing} position={pos} duration={song.duration} onTogglePlay={() => setPlaying((p) => !p)} onNext={() => setPos(0)} onOpen={() => setFull(true)} />
+        <BottomNav current="/" />
+      </div>
+      <FullPlayer
+        open={full}
+        onClose={() => setFull(false)}
+        track={track}
+        playing={playing}
+        position={pos}
+        duration={song.duration}
+        onTogglePlay={() => setPlaying((p) => !p)}
+        onPrev={() => setPos(0)}
+        onNext={() => setPos(0)}
+        onSeek={setPos}
+        onOpenQueue={() => {}}
+      />
     </div>
   );
 }

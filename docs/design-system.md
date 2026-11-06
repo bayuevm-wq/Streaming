@@ -159,7 +159,7 @@ Durasi dan posisi lagu harus sejajar di kolom, jadi memakai angka tabular (`tabu
 - **Gutter halaman:** 16px di ponsel, 32px di layar lebar. Konten maksimal 72rem.
 - **Radius:** selalu 0. Utilitas `rounded-*` bawaan Tailwind dihapus (`--radius-*: initial`), jadi tidak ada yang bisa membulatkan elemen tanpa sengaja.
 - **Bayangan:** hanya `shadow-float`, untuk toast dan dialog. Permukaan lain dipisahkan lewat selisih tona atau garis `hairline`.
-- **Breakpoint** (varian kustom di `globals.css`, tepat "sampai dengan"): `phone:` = lebar ≤ 640px, `tablet:` = lebar ≤ 760px (player bar menumpuk dan volume disembunyikan). Varian bawaan `max-[640px]` **tidak dipakai**, karena Tailwind menafsirkannya sebagai "< 640px".
+- **Breakpoint** (varian kustom di `globals.css`, tepat "sampai dengan"): `phone:` = lebar ≤ 640px (nomor lagu mengecil, kolom album hilang), `tablet:` = lebar ≤ 760px (sidebar dan player bar digantikan `MiniPlayer` + `BottomNav`). Varian bawaan `max-[640px]` **tidak dipakai**, karena Tailwind menafsirkannya sebagai "< 640px".
 
 ## 6. Ikon
 
@@ -223,12 +223,19 @@ Semua di `components/ui/`, dapat dilihat dan dicoba di `/gaya`. Komponen bersifa
 ### Player bar (`PlayerBar`)
 - Garis atas aksen 2px, latar `surface`. Tiga kolom: lagu · kontrol + slider posisi · suka, antrean, volume. ≤ 760px menumpuk dan menyembunyikan volume dan aksi samping. Wilayah `aria-live` mengumumkan perubahan lagu.
 
+### Mini-player (`MiniPlayer`), pemutar penuh (`FullPlayer`), dan navigasi bawah (`BottomNav`) — ponsel ≤ 760px
+Menggantikan sidebar dan player bar di layar kecil. Sebelumnya navigasi atas + player bar memakan ±220px tinggi layar; sekarang mini-player ±58px + navigasi bawah ±56px (< 130px, dijaga E2E). Perbandingan: [sebelum](./images/fase2/ponsel-sebelum-redesain/ponsel-beranda.png) dan [sesudah](./images/fase2/ponsel-beranda.png).
+- **`MiniPlayer`:** satu baris: sampul 40px, judul (Newsreader italic) + artis, tombol putar/jeda aksen 44px, tombol berikutnya. Progres hanya garis 2px di tepi atas (dekoratif, `aria-hidden`). Mengetuk area lagu membuka `FullPlayer` (tombol bernama "Buka pemutar: judul, artis"). Pembaca layar mendengar perubahan lagu lewat wilayah `aria-live`.
+- **`FullPlayer`:** layar penuh di atas `<dialog>` asli (fokus terkunci, Esc menutup, fokus kembali ke mini-player). Sampul besar (maks 20rem), judul, artis, slider posisi (penggaris; panah, Home/End, `aria-valuetext` "1:24 dari 3:42"), kontrol besar (putar 64px), tombol "Antrean". Volume tidak ada karena diatur perangkat. Memperhatikan area aman atas dan bawah.
+- **`BottomNav`:** empat tujuan (Beranda, Cari, Library, Disukai), ikon di atas label, tinggi ≥ 56px. Aktif: teks aksen + garis atas 3px + `aria-current="page"`. Memperhatikan `safe-area-inset-bottom`.
+- Hanya satu pemutar (PlayerBar atau MiniPlayer) yang ada di pohon aksesibilitas pada satu waktu: yang lain `display: none`.
+
 ### Slider progres dan volume (`Slider`)
 - `variant="ruler"` (penggaris dengan tanda tiap 10%, untuk posisi lagu) dan `"line"` (volume). Isi aksen, track `control`, jempol persegi 10×16px. Langkah posisi 1 detik, volume 5.
 - Bukan komponen buatan sendiri: input range asli, jadi keyboard dan pembaca layar bekerja tanpa kode tambahan.
 
 ### Sidebar (`Sidebar`)
-- Navigasi utama (Beranda, Cari, Library, Lagu Disukai) dan daftar playlist. Item aktif: `aria-current="page"`, garis kiri 3px, teks aksen. Lebar 16rem. **Belum dirancang:** versi ponsel (drawer atau tab bawah), diputuskan di Fase 2.
+- Navigasi utama (Beranda, Cari, Library, Lagu Disukai) dan daftar playlist; hanya desktop. Item aktif: `aria-current="page"`, garis kiri 3px, teks aksen. Lebar 16rem, setinggi kolomnya. Item navigasi dibagi dengan `BottomNav` lewat `components/ui/nav-items.ts`.
 
 ### Header pencarian (`SearchHeader`)
 - Formulir GET ke `/cari?q=`; bekerja tanpa JavaScript dan URL hasil dapat dibagikan. Slot kanan untuk menu pengguna.
@@ -270,7 +277,7 @@ Semua di `components/ui/`, dapat dilihat dan dicoba di `/gaya`. Komponen bersifa
 
 ## 12. Belum diputuskan atau belum dikerjakan
 
-- Sidebar versi ponsel, mini-player ponsel, dan halaman utama Fase 2 belum dirancang; komponen dasarnya sudah ada.
+- Halaman utama Fase 3 (pencarian, library, disukai, playlist) belum dirancang; komponen dasarnya sudah ada. Antrean di ponsel masih dialog biasa, bukan lembar bawah.
 - `next/image` untuk sampul Supabase belum dikonfigurasi (`Cover` memakai `<img>` dengan `loading="lazy"`).
 - Mode terang tidak ada dan tidak direncanakan.
 - Tema warna dari sampul lagu (ambient) sengaja tidak dipakai: aksen tetap kobalt.

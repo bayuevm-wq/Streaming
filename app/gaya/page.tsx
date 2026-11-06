@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { FieldDemo, MediaDemo, OverlayDemo, PlayerDemo } from "@/components/gaya/interactive-demos";
+import { FieldDemo, MediaDemo, MobileDemo, OverlayDemo, PlayerDemo } from "@/components/gaya/interactive-demos";
 import { SAMPLE_SONGS, SampleCover } from "@/components/gaya/sample";
 import { Button } from "@/components/ui/button";
 import { Cover } from "@/components/ui/cover";
@@ -82,7 +82,7 @@ export default function GayaPage() {
           angka dan warna di sini selalu sama dengan yang dipakai aplikasi. Dokumentasi lengkap: <code className="font-body">docs/design-system.md</code>.
         </p>
         <nav aria-label="Daftar isi" className="flex flex-wrap gap-2 pt-2">
-          {[["warna", "Warna"], ["huruf", "Huruf"], ["spasi", "Spasi dan radius"], ["gerak", "Gerak"], ["ikon", "Ikon"], ["tombol", "Tombol"], ["input", "Input"], ["status", "Status"], ["media", "Kartu dan baris"], ["pemutar", "Pemutar"], ["navigasi", "Sidebar dan pencarian"], ["overlay", "Dialog dan toast"], ["kosong", "Kosong dan skeleton"]].map(([id, label]) => (
+          {[["warna", "Warna"], ["huruf", "Huruf"], ["spasi", "Spasi dan radius"], ["gerak", "Gerak"], ["ikon", "Ikon"], ["tombol", "Tombol"], ["input", "Input"], ["status", "Status"], ["media", "Kartu dan baris"], ["pemutar", "Pemutar"], ["ponsel", "Ponsel"], ["navigasi", "Sidebar dan pencarian"], ["overlay", "Dialog dan toast"], ["kosong", "Kosong dan skeleton"]].map(([id, label]) => (
             <a key={id} href={`#${id}`} className="border border-control px-3 py-1.5 text-small hover:bg-raised">
               {label}
             </a>
@@ -246,6 +246,10 @@ export default function GayaPage() {
 
       <Section id="pemutar" title="Player bar, slider progres, dan slider volume" intro="Slider memakai input range asli: bisa digeser dengan panah, fokus terlihat, dan pembaca layar mendengar nilai dalam teks (‘1:24 dari 3:42’).">
         <PlayerDemo />
+      </Section>
+
+      <Section id="ponsel" title="Ponsel: mini-player, pemutar penuh, navigasi bawah" intro="Untuk layar 760px ke bawah. Sidebar dan player bar digantikan MiniPlayer (satu baris) + BottomNav (empat tujuan). Mengetuk mini-player membuka pemutar penuh dengan sampul besar, slider posisi, dan antrean.">
+        <MobileDemo />
       </Section>
 
       <Section id="navigasi" title="Sidebar dan header pencarian">

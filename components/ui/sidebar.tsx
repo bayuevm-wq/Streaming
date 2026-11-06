@@ -1,14 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { IconHome, IconLibrary, IconPlaylist, IconPlus, IconSearch, IconHeart } from "./icons";
-
-const NAV = [
-  { href: "/", label: "Beranda", icon: IconHome },
-  { href: "/cari", label: "Cari", icon: IconSearch },
-  { href: "/library", label: "Library", icon: IconLibrary },
-  { href: "/disukai", label: "Lagu Disukai", icon: IconHeart },
-] as const;
+import { IconPlaylist, IconPlus } from "./icons";
+import { NAV_ITEMS } from "./nav-items";
 
 type Props = {
   /** Jalur aktif, mis. "/" atau "/library". */
@@ -30,7 +24,7 @@ export function Sidebar({ current, playlists, onCreatePlaylist, footer }: Props)
       <p className="px-3 font-display text-heading font-medium italic">Streaming</p>
       <nav aria-label="Utama">
         <ul className="grid gap-0.5">
-          {NAV.map(({ href, label, icon: Icon }) => {
+          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
             const active = current === href;
             return (
               <li key={href}>
