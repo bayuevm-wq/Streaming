@@ -50,7 +50,7 @@ function NameDialog({ mode }: { mode: "create" | "rename" }) {
   }
 
   const atLimit = mode === "create" && count >= MAX_PLAYLISTS;
-  const close = () => usePlaylistUi.getState().close();
+  const close = () => usePlaylistUi.getState().close(mode);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -122,7 +122,7 @@ function DeleteDialog() {
   const dialog = usePlaylistUi((s) => s.dialog);
   const [busy, setBusy] = useState(false);
   const open = dialog?.kind === "delete";
-  const close = () => usePlaylistUi.getState().close();
+  const close = () => usePlaylistUi.getState().close("delete");
 
   async function confirm() {
     if (dialog?.kind !== "delete" || busy) return;
@@ -166,7 +166,7 @@ function AddDialog() {
   const hydrated = usePlaylists((s) => s.hydrated);
   const [pending, setPending] = useState<string | null>(null);
   const open = dialog?.kind === "add";
-  const close = () => usePlaylistUi.getState().close();
+  const close = () => usePlaylistUi.getState().close("add");
 
   async function add(id: string, name: string) {
     if (dialog?.kind !== "add" || pending) return;

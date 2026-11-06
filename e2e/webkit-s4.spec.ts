@@ -55,14 +55,15 @@ test("S4 WebKit: katalog, lagu pribadi (jalur sinkron), seek, next, dan jalur la
     await expect.poll(() => signCount, { timeout: 20_000, message: "pra-ambil signed URL tidak terjadi" }).toBeGreaterThanOrEqual(2);
     await page.waitForTimeout(500);
     const before = signCount;
-    await page.getByRole("button", { name: "Putar S4 Pribadi A" }).click();
+    // daftar library terbaru dulu (B di atas A): mulai dari B, lalu "next" ke A
+    await page.getByRole("button", { name: "Putar S4 Pribadi B" }).click();
     await waitForPlayback(page);
     expect(signCount, "ketukan putar tidak boleh memicu permintaan signed URL baru (jalur sinkron)").toBe(before);
     result("pribadi_sinkron_play", true);
 
     // next ke lagu pribadi ter-cache
     await playerRegion(page).getByRole("button", { name: "Lagu berikutnya" }).click();
-    await expect(playerRegion(page).getByText("S4 Pribadi B", { exact: true }).first()).toBeVisible();
+    await expect(playerRegion(page).getByText("S4 Pribadi A", { exact: true }).first()).toBeVisible();
     await waitForPlayback(page, 0.3);
     result("next_ke_pribadi_cache", true);
   });

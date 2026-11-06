@@ -16,7 +16,9 @@ type UiState = {
   openDelete: (id: string, name: string) => void;
   openAdd: (songId: string, title: string) => void;
   markContained: (playlistId: string) => void;
-  close: () => void;
+  /** Menutup dialog. Dengan `kind`, hanya bila dialog aktif masih dari jenis itu (event `close` bawaan dialog LAMA yang baru
+   * diganti tidak boleh menutup dialog BARU). */
+  close: (kind?: Dialog["kind"]) => void;
 };
 
 export const usePlaylistUi = create<UiState>()((set, get) => ({
@@ -38,5 +40,5 @@ export const usePlaylistUi = create<UiState>()((set, get) => ({
     const d = get().dialog;
     if (d?.kind === "add") set({ dialog: { ...d, contains: [...(d.contains ?? []), playlistId] } });
   },
-  close: () => set({ dialog: null }),
+  close: (kind) => set((s) => (kind && s.dialog?.kind !== kind ? s : { dialog: null })),
 }));
