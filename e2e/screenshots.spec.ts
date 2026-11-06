@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { playerRegion, signInAnonymously, waitForPlayback } from "./helpers";
 
 // Tangkapan layar untuk ditinjau manusia (diunggah sebagai artefak CI) + pemeriksaan tak ada scroll horizontal.
-const OUT = "test-results/shots";
+const OUT = "test-results/shots/fase2";
 
 for (const vp of [
   { name: "desktop", width: 1280, height: 800 },
@@ -19,6 +19,7 @@ for (const vp of [
 
     const noHScroll = () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1 && document.body.scrollWidth <= window.innerWidth + 1);
     await page.screenshot({ path: `${OUT}/${vp.name}-beranda.png` });
+    await playerRegion(page).screenshot({ path: `${OUT}/${vp.name}-${vp.width <= 760 ? "mini-player" : "player-bar"}.png` }); // pemutar di dasar layar
     expect(await noHScroll(), "beranda: scroll horizontal").toBe(true);
 
     await page.getByRole("region", { name: "Album" }).getByRole("link").first().click();

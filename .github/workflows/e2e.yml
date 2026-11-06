@@ -84,18 +84,17 @@ jobs:
         run: tail -n 80 next.log || true
 
       # Hanya bila dijalankan manual dengan opsi update_screenshots (Actions -> e2e -> Run workflow).
-      - name: Perbarui tangkapan layar di docs/images/fase2
+      - name: Perbarui tangkapan layar di docs/images (fase2, fase3, fase4)
         if: github.event_name == 'workflow_dispatch' && inputs.update_screenshots
         run: |
-          mkdir -p docs/images/fase2
-          cp test-results/shots/*.png docs/images/fase2/
+          for d in fase2 fase3 fase4; do mkdir -p "docs/images/$d"; cp test-results/shots/$d/*.png "docs/images/$d/"; done
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/images/fase2
+          git add docs/images
           if git diff --cached --quiet; then
             echo "Tidak ada perubahan pada tangkapan layar."
           else
-            git commit -m "Update Phase 2 screenshots (manual run)"
+            git commit -m "Update screenshots (manual run)"
             git push
           fi
 
