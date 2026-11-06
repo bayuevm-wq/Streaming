@@ -65,11 +65,23 @@ jobs:
           key: playwright-${{ runner.os }}-webkit-${{ steps.pw.outputs.version }}
 
       - name: Paket sistem WebKit (apt)
-        timeout-minutes: 10
+        timeout-minutes: 12
         run: |
+          # Sebab hang yang teramati (run 42238440796, runner ubuntu-26.04): unduhan apt dari mirror macet setelah beberapa berkas;
+          # timeout luar membunuh npx tetapi apt-get anaknya tetap hidup memegang kunci dpkg, sehingga ulangan gagal ("Could not
+          # get lock", kode 100). Perbaikan: (1) timeout dan ulang di tingkat apt supaya unduhan yang macet gagal dengan sendirinya,
+          # (2) bersihkan sisa proses apt/dpkg sebelum mengulang.
+          printf 'Acquire::http::Timeout "30";
+Acquire::https::Timeout "30";
+Acquire::Retries "5";
+DPkg::Lock::Timeout "120";
+' | sudo tee /etc/apt/apt.conf.d/99ci-timeouts >/dev/null
           for i in 1 2 3; do
-            if timeout 180 npx playwright install-deps webkit; then exit 0; fi
-            echo "install-deps percobaan $i gagal atau melewati batas waktu; mengulang"
+            if timeout -k 10 300 npx playwright install-deps webkit; then exit 0; fi
+            echo "install-deps percobaan $i gagal atau melewati batas waktu; membersihkan sisa proses apt lalu mengulang"
+            sudo pkill -9 -x apt-get || true
+            sudo pkill -9 -x dpkg || true
+            sudo dpkg --configure -a || true
           done
           exit 1
 
