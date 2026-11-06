@@ -131,3 +131,38 @@ test("ID tidak valid: 404 rapi di dalam kerangka aplikasi", async ({ page }) => 
   await expect(page.getByRole("navigation", { name: "Utama" }).first()).toBeVisible();
   await expect(page.getByRole("search")).toBeVisible();
 });
+
+test("lagu rusak (berkas 404): satu notifikasi dan hanya satu lagu yang dilewati", async ({ page, request }) => {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  test.skip(!url || !key, "butuh SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY");
+  const headers = { apikey: key!, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=representation" };
+
+  // Lagu publik yang berkas audionya tidak ada di Storage. Dibuat terbaru, jadi tampil pertama di "Lagu Terbaru".
+  const artists = (await (await request.get(`${url}/rest/v1/artists?select=id&limit=1`, { headers })).json()) as { id: string }[];
+  const created = await request.post(`${url}/rest/v1/songs`, {
+    headers,
+    data: { visibility: "public", status: "ready", title: "e2e Lagu Rusak", artist_id: artists[0].id, audio_path: "seed/e2e-tidak-ada.mp3", duration_sec: 60 },
+  });
+  expect(created.ok(), await created.text()).toBe(true);
+  const [row] = (await created.json()) as { id: string }[];
+
+  try {
+    await signInAnonymously(page);
+    const titles = (await page.getByRole("region", { name: "Lagu Terbaru" }).locator("h3").allTextContents()).map((t) => t.trim());
+    expect(titles[0]).toBe("e2e Lagu Rusak");
+
+    await page.getByRole("button", { name: "Putar e2e Lagu Rusak" }).click();
+
+    // 404 pada media memicu DUA jalur kegagalan (penolakan play() dan event "error"). Hanya satu yang boleh bertindak.
+    await expect(page.getByText(/Tidak dapat memutar “e2e Lagu Rusak”/)).toHaveCount(1);
+    await expect(playerRegion(page).getByText(titles[1], { exact: true })).toBeVisible();
+    await waitForPlayback(page);
+    await page.waitForTimeout(3000); // event "error" terlambat tidak boleh melompati lagu berikutnya
+    await expect(page.getByText(/Tidak dapat memutar/)).toHaveCount(1);
+    await expect(playerRegion(page).getByText(titles[1], { exact: true })).toBeVisible();
+    expect((await sampleAudio(page)).paused).toBe(false);
+  } finally {
+    await request.delete(`${url}/rest/v1/songs?id=eq.${row.id}`, { headers });
+  }
+});

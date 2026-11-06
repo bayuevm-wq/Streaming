@@ -132,6 +132,7 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
     a.pause();
     a.removeAttribute("src");
     a.load();
+    active = null;
     set((s) => ({ queue: [], index: -1, status: "idle", token: s.token + 1, notice: null }));
     useProgress.setState({ position: 0, duration: 0 });
   },
@@ -148,6 +149,21 @@ function stopAtEnd() {
   a.currentTime = 0;
   usePlayer.setState({ status: "paused" });
   useProgress.setState({ position: 0 });
+}
+
+/**
+ * Pemuatan sumber yang sedang berjalan. Satu kegagalan sumber bisa terlihat lewat DUA jalur: penolakan `play()` dan
+ * event "error" pada elemen audio, dalam urutan apa pun. `handled` memastikan satu sumber hanya menghasilkan satu
+ * lompatan dan satu notifikasi; `token` dan `url` memastikan kegagalan lagu LAMA tidak menyalahkan lagu yang baru.
+ */
+let active: { token: number; url: string; handled: boolean } | null = null;
+
+/** Satu-satunya pintu kegagalan sumber. Mengembalikan false bila kegagalan itu sudah ditangani atau sudah usang. */
+function failActive(): Promise<void> | false {
+  if (!active || active.handled) return false;
+  if (usePlayer.getState().token !== active.token) return false;
+  active.handled = true;
+  return skipBroken(usePlayer.getState().index);
 }
 
 async function skipBroken(index: number) {
@@ -176,6 +192,7 @@ async function load(index: number) {
   if (!url) return skipBroken(index);
 
   const a = getAudio();
+  active = { token: mine, url, handled: false };
   a.src = url;
   try {
     await a.play();
@@ -188,7 +205,7 @@ async function load(index: number) {
       usePlayer.setState({ status: "paused" }); // autoplay ditolak: kembali ke jeda tanpa galat
       return;
     }
-    return skipBroken(index);
+    await failActive(); // penolakan play() selain autoplay/abort = sumber tak dapat diputar
   }
 }
 
@@ -217,6 +234,9 @@ export function initPlayer() {
   a.addEventListener("error", () => {
     const { index, status } = usePlayer.getState();
     if (status === "idle" || index < 0 || !a.getAttribute("src")) return; // reset() menghapus src: bukan galat
-    void skipBroken(index);
+    // Hanya galat milik sumber yang AKTIF: elemen punya `error` untuk sumber saat ini, dan src-nya sama dengan yang
+    // kita pasang. Event terlambat milik lagu sebelumnya (src sudah diganti => a.error null) diabaikan.
+    if (!a.error || !active || a.getAttribute("src") !== active.url) return;
+    void failActive();
   });
 }

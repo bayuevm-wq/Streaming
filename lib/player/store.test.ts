@@ -3,7 +3,19 @@
 import assert from "node:assert/strict";
 
 class FakeAudio extends EventTarget {
-  src = "";
+  private _src = "";
+  /** Seperti HTMLMediaElement: mengganti src memulai pemuatan baru dan menghapus galat sebelumnya. */
+  get src() {
+    return this._src;
+  }
+  set src(v: string) {
+    this._src = v;
+    this.error = null;
+  }
+  error: { code: number } | null = null;
+  failUrls = new Set<string>();
+  /** event-first: event error lebih dulu lalu play() ditolak. reject-first: play() ditolak lebih dulu, event error menyusul TERLAMBAT. */
+  failMode: "event-first" | "reject-first" | "reject-only" = "reject-only";
   currentTime = 0;
   duration = Number.NaN;
   paused = true;
@@ -19,6 +31,17 @@ class FakeAudio extends EventTarget {
   }
   load() {}
   play() {
+    if (this.failUrls.has(this._src)) {
+      const rejection = Promise.reject(Object.assign(new Error("no supported source"), { name: "NotSupportedError" }));
+      if (this.failMode === "event-first") {
+        this.error = { code: 4 };
+        this.dispatchEvent(new Event("error"));
+      } else if (this.failMode === "reject-first") {
+        this.error = { code: 4 };
+        setTimeout(() => this.dispatchEvent(new Event("error")), 25); // saat itu lagu berikutnya sudah dimuat
+      }
+      return rejection;
+    }
     if (this.mode === "notallowed") return Promise.reject(Object.assign(new Error("blocked"), { name: "NotAllowedError" }));
     this.paused = false;
     this.played.push(this.src);
@@ -38,6 +61,7 @@ class FakeAudio extends EventTarget {
     this.dispatchEvent(new Event("ended"));
   }
   fail() {
+    this.error = { code: 4 };
     this.dispatchEvent(new Event("error"));
   }
 }
@@ -60,6 +84,8 @@ initPlayer(); // idempoten: pendengar tidak boleh terpasang dua kali
 function fresh() {
   P().reset();
   audio().mode = "ok";
+  audio().failUrls.clear();
+  audio().failMode = "reject-only";
   audio().played = [];
   audio().currentTime = 0;
   setUrlResolver(async (t) => t.audioUrl);
@@ -194,6 +220,54 @@ audio().fail(); // galat setelah reset tidak boleh memicu notifikasi
 await tick();
 assert.equal(P().notice, null);
 pass("enqueue menambah antrean tanpa mengganggu lagu aktif; reset mengosongkan dan menghentikan audio");
+
+// 10b. SATU kegagalan = SATU lompatan dan SATU notifikasi, apa pun urutan event error dan penolakan play()
+for (const mode of ["reject-only", "event-first", "reject-first"] as const) {
+  fresh();
+  audio().failUrls.add("https://x/1.mp3"); // antrean [A rusak, B, C]
+  audio().failMode = mode;
+  let notices = 0;
+  const unsubscribe = usePlayer.subscribe((state, prev) => {
+    if (state.notice && state.notice.id !== prev.notice?.id) notices++;
+  });
+  await P().playList(tracks, 0);
+  await tick(80); // melewati event error yang terlambat (25 ms)
+  unsubscribe();
+  assert.equal(P().index, 1, `[${mode}] harus berhenti di B, dapat indeks ${P().index}`);
+  assert.equal(audio().src, "https://x/2.mp3", `[${mode}] yang diputar harus B`);
+  assert.deepEqual(audio().played, ["https://x/2.mp3"], `[${mode}] hanya B yang diputar, dapat ${JSON.stringify(audio().played)}`);
+  assert.equal(notices, 1, `[${mode}] harus tepat satu notifikasi, dapat ${notices}`);
+  assert.match(P().notice?.message ?? "", /Lagu 1/);
+  assert.equal(P().status, "playing");
+}
+pass("[A rusak, B, C]: yang diputar B, tepat satu notifikasi, untuk ketiga urutan (hanya-tolak, event dulu, tolak dulu lalu event terlambat)");
+
+// 10c. galat event terlambat milik lagu SEBELUMNYA tidak boleh menyalahkan lagu yang sedang berjalan baik
+fresh();
+await P().playList(tracks, 1);
+await tick();
+audio().dispatchEvent(new Event("error")); // tanpa audio.error: bukan galat sumber yang aktif
+await tick();
+assert.equal(P().index, 1);
+assert.equal(P().notice, null);
+pass("event error tanpa audio.error (basi) diabaikan: lagu yang sehat tidak dilewati");
+
+// 10d. B juga rusak: lompat satu per satu, setiap lagu satu notifikasi
+fresh();
+audio().failUrls.add("https://x/1.mp3");
+audio().failUrls.add("https://x/2.mp3");
+audio().failMode = "event-first";
+let count = 0;
+const unsub2 = usePlayer.subscribe((state, prev) => {
+  if (state.notice && state.notice.id !== prev.notice?.id) count++;
+});
+await P().playList(tracks, 0);
+await tick(80);
+unsub2();
+assert.equal(P().index, 2);
+assert.equal(audio().src, "https://x/3.mp3");
+assert.equal(count, 2, `dua lagu rusak = dua notifikasi, dapat ${count}`);
+pass("[A rusak, B rusak, C]: berakhir di C dengan dua notifikasi (satu per lagu rusak)");
 
 // 11. hanya satu elemen audio
 assert.equal(getAudio(), getAudio());
