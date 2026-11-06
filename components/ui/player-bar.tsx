@@ -1,7 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { cn, formatTime } from "@/lib/cn";
+import { cn } from "@/lib/cn";
+import { formatTime } from "@/lib/format";
+import { Time } from "./time";
 import { IconHeart, IconNext, IconPause, IconPlay, IconPrev, IconQueue, IconVolume } from "./icons";
 import { Slider } from "./slider";
 
@@ -81,7 +83,7 @@ export function PlayerBar(p: Props) {
           </button>
         </div>
         <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 text-caption text-muted tabular-nums">
-          <span>{formatTime(p.position)}</span>
+          <Time seconds={p.position} />
           <Slider
             variant="ruler"
             label="Posisi lagu"
@@ -91,7 +93,7 @@ export function PlayerBar(p: Props) {
             valueText={posText}
             onValueChange={p.onSeek}
           />
-          <span>{formatTime(p.duration)}</span>
+          <Time seconds={p.duration} />
         </div>
       </div>
 

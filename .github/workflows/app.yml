@@ -56,3 +56,7 @@ jobs:
           npx next start -p 3000 &
           curl -fsS --retry 30 --retry-connrefused --retry-delay 1 -o /dev/null http://127.0.0.1:3000/gaya
           BASE_URL=http://127.0.0.1:3000 npm run test:keyboard
+
+      # cn() memakai tailwind-merge: kelas bertabrakan diselesaikan dan token kustom terdaftar.
+      - name: Uji cn()
+        run: npm run test:cn

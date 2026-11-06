@@ -128,6 +128,11 @@
 }
 
 @layer components {
+  /* Titik dua dalam waktu: tetap proporsional di dalam angka tabular (lihat components/ui/time.tsx) */
+  .colon {
+    font-variant-numeric: proportional-nums;
+  }
+
   /* ---------- Slider (progres = penggaris, volume = garis) ----------
      Elemen asli <input type="range">: panah, Home/End, PageUp/PageDown, dan pembaca layar bekerja bawaan. */
   .slider {

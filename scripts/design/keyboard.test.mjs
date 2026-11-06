@@ -100,6 +100,19 @@ try {
   assert.deepEqual({ ...btn, r: undefined }, { style: "solid", w: "2px", off: "3px", c: "rgb(124, 151, 255)", r: undefined });
   pass("fokus tombol: outline kobalt 2px, offset 3px");
 
+  // --- cn(): <Cover className="size-10"> di footer harus 40x40, bukan melebar menjadi strip -----------------
+  const foot = await evalJs(`(()=>{const r=document.querySelector('footer .aspect-square').getBoundingClientRect();return {w:Math.round(r.width),h:Math.round(r.height)}})()`);
+  assert.deepEqual(foot, { w: 40, h: 40 });
+  pass("Cover className=size-10 di footer berukuran 40x40 (w-full bawaan tidak menang)");
+
+  // --- waktu: angka tabular, titik dua proporsional (tidak tampak "3 : 42") ---------------------------------
+  const widths = await evalJs(`(()=>{const w=(s)=>{const e=document.createElement('span');e.className='tabular-nums';e.style.cssText='position:absolute;visibility:hidden;font-size:14px;white-space:pre';e.innerHTML=s;document.body.append(e);const x=e.getBoundingClientRect().width;e.remove();return x};
+    const colon='<span class="colon">:</span>';
+    return {plain:w('3:42'),hybrid:w('3'+colon+'42'),h1:w('1'+colon+'24'),h2:w('0'+colon+'08'),h3:w('3'+colon+'42')}})()`);
+  assert.ok(widths.hybrid < widths.plain - 4, `titik dua proporsional harus menghemat > 4px: ${JSON.stringify(widths)}`);
+  assert.ok(Math.abs(widths.h1 - widths.h2) < 0.1 && Math.abs(widths.h2 - widths.h3) < 0.1, `lebar "d:dd" harus sama (kolom rata): ${JSON.stringify(widths)}`);
+  pass(`waktu: "3:42" ${widths.plain.toFixed(1)}px (tabular penuh) -> ${widths.hybrid.toFixed(1)}px; semua "d:dd" selebar sama`);
+
   // --- sudut tajam: kartu, sampul, tombol, input, dialog ---------------------------------------------
   const radii = await evalJs(`[...document.querySelectorAll('article, button, input, dialog, svg.size-full, .aspect-square')].map(e=>getComputedStyle(e).borderTopLeftRadius).filter(r=>r!=='0px').length`);
   assert.equal(radii, 0, "ada elemen dengan sudut membulat");

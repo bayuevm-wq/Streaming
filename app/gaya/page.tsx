@@ -12,6 +12,7 @@ import { SearchHeader } from "@/components/ui/search-header";
 import { Sidebar } from "@/components/ui/sidebar";
 import { SkeletonGroup, SongCardSkeleton, SongRowSkeleton } from "@/components/ui/skeleton";
 import { InlineStatus, StatusMessage } from "@/components/ui/status";
+import { Time } from "@/components/ui/time";
 import { contrastRatio, formatRatio, hueGap, parseColorTokens } from "@/lib/design/contrast";
 
 export const metadata: Metadata = { title: "Gaya — Streaming", robots: { index: false, follow: false } };
@@ -153,7 +154,10 @@ export default function GayaPage() {
             </div>
           ))}
         </div>
-        <p className="max-w-prose text-small text-muted tabular-nums">Angka sejajar memakai tabular-nums: 0:42 · 1:24 · 3:42 · 128 kbps · 12 lagu.</p>
+        <p className="max-w-prose text-small text-muted">
+          Waktu memakai angka tabular (lebar sama, kolom rata) dengan titik dua proporsional (komponen Time): <Time seconds={42} /> · <Time seconds={84} /> ·{" "}
+          <Time seconds={222} /> · <Time seconds={600} /> · <Time seconds={3725} />. Tanpa itu titik dua melebar jadi 8,9px dan terbaca &ldquo;3 : 42&rdquo;.
+        </p>
       </Section>
 
       <Section id="spasi" title="Spasi dan radius" intro="Kelipatan 4px. Radius selalu 0: kartu, sampul, tombol, input, dialog, semuanya bersudut tajam. Utilitas rounded-* dan shadow-* bawaan Tailwind dihapus; satu-satunya bayangan adalah shadow-float untuk yang melayang (toast, dialog).">

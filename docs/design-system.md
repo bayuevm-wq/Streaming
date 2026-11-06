@@ -132,7 +132,26 @@ Dua keluarga, dimuat lewat `next/font/google` di `app/layout.tsx`: hanya subset 
 | `text-small` | 14px / 1,5 | Artis, album, galat, petunjuk |
 | `text-caption` | 13px / 1,4 | Waktu pada slider, label kecil |
 
-Aturan: huruf miring dipakai untuk judul, nama aplikasi, dan nomor lagu; bukan untuk teks panjang. Angka sejajar (durasi, waktu) memakai `tabular-nums`. Jangan memakai teks di bawah 13px dan jangan memakai huruf kapital semua dengan jarak lebar.
+Aturan: huruf miring dipakai untuk judul, nama aplikasi, dan nomor lagu; bukan untuk teks panjang. Jangan memakai teks di bawah 13px dan jangan memakai huruf kapital semua dengan jarak lebar.
+
+### Angka waktu (komponen `Time`)
+
+Durasi dan posisi lagu harus sejajar di kolom, jadi memakai angka tabular (`tabular-nums`). Masalahnya, di Schibsted Grotesk fitur `tnum` ikut melebarkan **titik dua** dari 3,9px menjadi 8,9px (pada 14px), sehingga waktu terbaca "3 : 42" dan angka "1" berkaki seperti mesin tik. Lima varian dibandingkan ([gambar perbandingan](./images/waktu-perbandingan-varian.png)); lebar "3:42" pada 14px:
+
+| Varian | Lebar "3:42" | Lebar titik dua | Kolom rata | Catatan |
+|---|---|---|---|---|
+| A. proporsional | 27,4px | 3,9px | **tidak** (1:24 = 24,6px, 0:08 = 29,5px) | rapat tetapi bergoyang |
+| B. `tabular-nums` (sebelumnya) | 35,6px | 8,9px | ya | titik dua renggang |
+| **C. angka tabular + titik dua proporsional (dipilih)** | **30,6px** | 3,9px | **ya** (semua "d:dd" 30,6px) | rapat dan rata |
+| D. tnum + `case` | 35,6px | 8,9px | ya | sama dengan B |
+| E. lnum + tnum | 35,6px | 8,9px | ya | sama dengan B |
+
+`Time` merender angka tabular dan membungkus tiap titik dua dengan kelas `.colon` (`font-variant-numeric: proportional-nums`). Teks yang dibaca pembaca layar tetap "3:42". Pakai `Time` untuk semua waktu yang tampil; string `aria-valuetext` tidak perlu.
+
+| | Baris lagu | Player bar |
+|---|---|---|
+| Sebelum | ![baris sebelum](./images/waktu-sebelum-baris.png) | ![player sebelum](./images/waktu-sebelum-player.png) |
+| Sesudah | ![baris sesudah](./images/waktu-sesudah-baris.png) | ![player sesudah](./images/waktu-sesudah-player.png) |
 
 ## 5. Spasi, tata letak, radius, bayangan
 
@@ -235,6 +254,8 @@ Semua di `components/ui/`, dapat dilihat dan dicoba di `/gaya`. Komponen bersifa
 | Nama aksi sesuai akibat ("Hapus playlist") | "OK" / "Ya" |
 | Token (`bg-surface`, `text-muted`) | Hex atau `bg-zinc-800` di komponen |
 | `phone:` / `tablet:` untuk breakpoint | `max-[640px]:` (berarti < 640px) |
+| `cn()` dari `lib/cn.ts` untuk menggabung kelas | Menggabung kelas dengan template string (tabrakan tidak terselesaikan) |
+| `<Time seconds={…} />` untuk waktu | `tabular-nums` langsung pada teks "3:42" (titik dua melebar) |
 | Biarkan sampul tampil apa adanya | Menimpa sampul dengan filter atau overlay gelap tebal |
 | Anim `opacity` dan warna latar | Transisi `outline-color` atau `all` |
 
@@ -244,6 +265,7 @@ Semua di `components/ui/`, dapat dilihat dan dicoba di `/gaya`. Komponen bersifa
 |---|---|---|---|
 | Kontras token | `npm run test:contrast` | 29 pasangan kontras + 3 cek rona status vs kobalt, dibaca dari `globals.css` | workflow `app` |
 | Keyboard + tampilan | `npm run test:keyboard` (butuh server dan Chrome) | Tab ke slider, cincin fokus, panah/Home/End, `aria-valuetext`, fokus tombol, sudut tajam, nomor 30px→20px pada 641→640px | workflow `app` |
+| `cn()` | `npm run test:cn` | Tabrakan kelas (`w-full` + `size-10`, `bg-raised` + `bg-surface`, ukuran vs warna `text-*`, varian `phone:`), dan setiap token di `globals.css` terdaftar. Tailwind-merge sudah memperlakukan nilai `bg-`/`text-` tak dikenal sebagai warna, jadi pendaftaran warna adalah sabuk pengaman; pendaftaran ukuran huruf, font, dan `shadow-float` yang menentukan (diuji dengan mutasi) | workflow `app` |
 | Lint, tipe, build | `npm run lint`, `npx tsc --noEmit`, `npm run build` | seluruh aplikasi termasuk `/gaya` | workflow `app` |
 
 ## 12. Belum diputuskan atau belum dikerjakan

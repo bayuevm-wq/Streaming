@@ -60,7 +60,7 @@ export function MediaDemo() {
       </div>
       <div>
         <h3 className="mb-4 text-small font-semibold text-muted">Baris lagu (perkecil jendela hingga 640px untuk melihat nomor mengecil dan album hilang)</h3>
-        <div className="border-t border-hairline">
+        <div id="baris-lagu" className="border-t border-hairline">
           {SAMPLE_SONGS.map((s, i) => (
             <SongRow
               key={s.id}
@@ -91,7 +91,7 @@ export function PlayerDemo() {
   const [liked, setLiked] = useState(false);
   const song = SAMPLE_SONGS[0];
   return (
-    <div className="grid gap-3">
+    <div id="player-demo" className="grid gap-3">
       <PlayerBar
         track={{ title: song.title, artist: song.artist, cover: cover(song.cover) }}
         playing={playing}

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { cn, formatTime } from "@/lib/cn";
+import { cn } from "@/lib/cn";
+import { Time } from "./time";
 import { IconHeart, IconPause, IconPlay } from "./icons";
 
 type Props = {
@@ -59,7 +60,7 @@ export function SongRow({ index, title, artist, album, durationSec, cover, playi
         <p className="truncate text-small text-muted">{artist}</p>
       </div>
       <p className="truncate text-small text-muted phone:hidden">{album ?? ""}</p>
-      <p className="text-right text-small text-muted tabular-nums">{formatTime(durationSec)}</p>
+      <p className="text-right text-small text-muted"><Time seconds={durationSec} /></p>
       <button
         type="button"
         onClick={onToggleLike}

@@ -12,7 +12,8 @@
     "test:seed": "node scripts/seed/validation.test.mjs",
     "test:audio": "node lib/audio/mp3.test.ts",
     "test:contrast": "node scripts/design/contrast.mjs",
-    "test:keyboard": "node scripts/design/keyboard.test.mjs"
+    "test:keyboard": "node scripts/design/keyboard.test.mjs",
+    "test:cn": "node lib/cn.test.ts"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "^1.6.3",
@@ -23,6 +24,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "^0.0.1",
+    "tailwind-merge": "^3.7.0",
     "zustand": "^5.0.16"
   },
   "devDependencies": {
