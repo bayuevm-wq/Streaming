@@ -38,3 +38,7 @@ _Katalog belum diisi._
 ## Keep-alive
 
 Proyek Supabase Free di-pause bila aktivitas database rendah selama 7 hari. Workflow [`keepalive`](.github/workflows/keepalive.yml) memanggil RPC `ping()` tiap hari. Isi secret repositori `SUPABASE_URL` dan `SUPABASE_ANON_KEY` (anon key, bukan service role); selama belum diisi, workflow hanya memberi pemberitahuan. GitHub dapat menonaktifkan workflow terjadwal pada repositori publik yang lama tidak aktif; jalankan manual lewat tab Actions (`workflow_dispatch`) bila ada email peringatan pause dari Supabase.
+
+## Design system
+
+Arah **Tinta Cetak** (mode gelap, kobalt, serif editorial): [`docs/design-system.md`](docs/design-system.md). Token ada di `app/globals.css`, komponen di `components/ui/`, dan halaman review di `/gaya` (`npm run dev`, buka `http://localhost:3000/gaya`). Uji: `npm run test:contrast` dan `npm run test:keyboard`.

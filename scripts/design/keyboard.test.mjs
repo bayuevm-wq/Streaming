@@ -1,0 +1,127 @@
+// Uji keyboard dan tampilan kontrol pada /gaya, memakai Chrome sungguhan lewat DevTools Protocol (tanpa dependensi).
+//   BASE_URL=http://127.0.0.1:3000 node scripts/design/keyboard.test.mjs
+// Membuktikan: slider progres/volume bisa difokus dengan Tab, digeser dengan panah/Home/End, aria-valuetext benar,
+// cincin fokus kobalt terlihat (2px, offset 3px), sudut tajam, dan nomor lagu mengecil di <= 640px.
+import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
+const BASE = process.env.BASE_URL ?? "http://127.0.0.1:3000";
+const candidates = [
+  process.env.CHROME_PATH,
+  "C:/Program Files/Google/Chrome/Application/chrome.exe",
+  "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
+  "/usr/bin/google-chrome",
+  "/usr/bin/google-chrome-stable",
+  "/usr/bin/chromium",
+  "/usr/bin/chromium-browser",
+].filter(Boolean);
+const chromePath = candidates.find((p) => fs.existsSync(p));
+if (!chromePath) throw new Error("Chrome/Chromium tidak ditemukan; atur CHROME_PATH");
+
+const port = 9400 + Math.floor(Math.random() * 400);
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), "kbd-"));
+const chrome = spawn(chromePath, ["--headless=new", "--disable-gpu", "--no-sandbox", `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, "about:blank"], { stdio: "ignore" });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const pass = (n) => console.log(`PASS ${n}`);
+
+let targets;
+for (let i = 0; i < 60 && !targets?.length; i++) {
+  try { targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json(); } catch { await sleep(250); }
+}
+const ws = new WebSocket(targets.find((t) => t.type === "page").webSocketDebuggerUrl);
+await new Promise((r) => (ws.onopen = r));
+let nextId = 0;
+const waiting = new Map();
+ws.onmessage = (e) => { const m = JSON.parse(e.data); if (m.id && waiting.has(m.id)) { waiting.get(m.id)(m); waiting.delete(m.id); } };
+const cdp = (method, params = {}) => new Promise((res) => { const id = ++nextId; waiting.set(id, res); ws.send(JSON.stringify({ id, method, params })); });
+const evalJs = async (expr) => (await cdp("Runtime.evaluate", { expression: expr, returnByValue: true, awaitPromise: true })).result.result.value;
+const press = async (key, code = key, vk = 0) => {
+  await cdp("Input.dispatchKeyEvent", { type: "keyDown", key, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
+  await cdp("Input.dispatchKeyEvent", { type: "keyUp", key, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
+};
+const KEYS = { Tab: ["Tab", "Tab", 9], ArrowRight: ["ArrowRight", "ArrowRight", 39], ArrowLeft: ["ArrowLeft", "ArrowLeft", 37], Home: ["Home", "Home", 36], End: ["End", "End", 35] };
+const key = (k) => press(...KEYS[k]);
+const slider = (label) => `document.querySelector('input[type=range][aria-label="${label}"]')`;
+const state = (label) => evalJs(`(()=>{const e=${slider(label)};return {v:e.value,t:e.getAttribute('aria-valuetext'),n:e.getAttribute('aria-label')}})()`);
+
+async function open(width) {
+  await cdp("Page.enable");
+  await cdp("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: false });
+  await cdp("Page.navigate", { url: `${BASE}/gaya` });
+  await sleep(3500);
+  await evalJs("document.fonts.ready.then(()=>1)");
+}
+
+try {
+  await open(1280);
+
+  // --- Tab sampai slider posisi mendapat fokus --------------------------------------------------------
+  let focused = false;
+  for (let i = 0; i < 400 && !focused; i++) {
+    await key("Tab");
+    focused = await evalJs(`document.activeElement === ${slider("Posisi lagu")}`);
+  }
+  assert.ok(focused, "slider posisi tidak dapat dijangkau dengan Tab");
+  pass("Tab menjangkau slider posisi lagu");
+
+  // --- fokus terlihat: cincin kobalt 2px, offset 3px pada pembungkus slider --------------------------
+  const ring = await evalJs(`(()=>{const a=document.activeElement;const s=getComputedStyle(a.parentElement);return {style:s.outlineStyle,w:s.outlineWidth,off:s.outlineOffset,c:s.outlineColor,fv:a.matches(':focus-visible'),has:a.parentElement.matches(':has(> input:focus-visible)'),cls:a.parentElement.className}})()`);
+  assert.deepEqual(ring, { style: "solid", w: "2px", off: "3px", c: "rgb(124, 151, 255)", fv: true, has: true, cls: ring.cls });
+  pass(`fokus slider terlihat: outline ${ring.w} ${ring.style} ${ring.c}, offset ${ring.off}`);
+
+  // --- panah, Home, End, dan aria-valuetext -----------------------------------------------------------
+  assert.deepEqual(await state("Posisi lagu"), { v: "84", t: "1:24 dari 3:42", n: "Posisi lagu" });
+  for (let i = 0; i < 3; i++) await key("ArrowRight");
+  assert.deepEqual(await state("Posisi lagu"), { v: "87", t: "1:27 dari 3:42", n: "Posisi lagu" });
+  await key("ArrowLeft");
+  assert.equal((await state("Posisi lagu")).v, "86");
+  await key("Home");
+  assert.deepEqual(await state("Posisi lagu"), { v: "0", t: "0:00 dari 3:42", n: "Posisi lagu" });
+  await key("End");
+  assert.deepEqual(await state("Posisi lagu"), { v: "222", t: "3:42 dari 3:42", n: "Posisi lagu" });
+  pass('slider posisi: panah ±1 dtk, Home/End, aria-valuetext "1:27 dari 3:42" dst.');
+
+  // --- slider volume dijangkau dengan Tab berikutnya dan bisa digeser --------------------------------
+  let vol = false;
+  for (let i = 0; i < 6 && !vol; i++) {
+    await key("Tab");
+    vol = await evalJs(`document.activeElement === ${slider("Volume")}`);
+  }
+  assert.ok(vol, "slider volume tidak dapat dijangkau dengan Tab");
+  await key("ArrowLeft");
+  assert.deepEqual(await state("Volume"), { v: "60", t: "60%", n: "Volume" });
+  pass('slider volume: Tab, panah kiri => 60%, aria-valuetext "60%"');
+
+  // --- fokus pada tombol memakai aturan global yang sama ---------------------------------------------
+  const btn = await evalJs(`(()=>{document.querySelector('#tombol button:not([disabled])').focus();const b=document.activeElement;const s=getComputedStyle(b);return {style:s.outlineStyle,w:s.outlineWidth,off:s.outlineOffset,c:s.outlineColor,r:s.borderTopLeftRadius}})()`);
+  assert.deepEqual({ ...btn, r: undefined }, { style: "solid", w: "2px", off: "3px", c: "rgb(124, 151, 255)", r: undefined });
+  pass("fokus tombol: outline kobalt 2px, offset 3px");
+
+  // --- sudut tajam: kartu, sampul, tombol, input, dialog ---------------------------------------------
+  const radii = await evalJs(`[...document.querySelectorAll('article, button, input, dialog, svg.size-full, .aspect-square')].map(e=>getComputedStyle(e).borderTopLeftRadius).filter(r=>r!=='0px').length`);
+  assert.equal(radii, 0, "ada elemen dengan sudut membulat");
+  pass("sudut tajam: tidak ada elemen kartu/sampul/tombol/input/dialog yang membulat");
+
+  // --- nomor lagu mengecil di <= 640px ---------------------------------------------------------------
+  const numSize = () => evalJs(`getComputedStyle(document.querySelector('#media div.group > button[aria-label^="Putar Kota"]')).fontSize`);
+  assert.equal(await numSize(), "30px");
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 640, height: 900, deviceScaleFactor: 1, mobile: false });
+  await sleep(600);
+  const vp = await evalJs(`({w:innerWidth,cw:document.documentElement.clientWidth,mq:matchMedia('(max-width: 640px)').matches})`);
+  assert.equal(await numSize(), "20px", `viewport: ${JSON.stringify(vp)}`);
+  const albumHidden = await evalJs(`getComputedStyle([...document.querySelectorAll('#media p')].find(p=>p.textContent==='Setengah Sadar')).display`);
+  assert.equal(albumHidden, "none");
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 641, height: 900, deviceScaleFactor: 1, mobile: false });
+  await sleep(300);
+  assert.equal(await numSize(), "30px");
+  pass("nomor lagu 30px di 641px dan 20px di 640px; kolom album tersembunyi di <= 640px");
+
+  console.log("SEMUA LULUS");
+} finally {
+  ws.close();
+  chrome.kill();
+}
+process.exit(0);

@@ -1023,14 +1023,14 @@ Pertanyaan lama tentang batas penyimpanan global, batas playlist, dan konfirmasi
 | 4 Konten | `/unggah` (reserve → TUS → finalize), Route Handler `finalize` dan hapus lagu, Edge Function `cleanup`, `0005_cron.sql` |
 | 5 Poles dan rilis | E2E Playwright, Lighthouse, README (tabel sumber/lisensi seed), deploy |
 
-> **Catatan: Fase 2 (UI) baru dimulai setelah design system selesai.** Sampai itu selesai, tampilan yang sudah ada hanya **sementara** dan bukan keputusan desain: tombol "Coba tanpa daftar" di `/masuk` memakai warna `emerald` bawaan (`components/auth/anonymous-sign-in.tsx`), font memakai Geist bawaan scaffold Next.js (`app/layout.tsx`), dan semua halaman lain adalah stub (`components/stub.tsx`). Jangan membangun komponen UI lain di atas gaya sementara ini; tema, tipografi, dan palet ditetapkan oleh design system lebih dulu, lalu `/masuk` ikut disesuaikan.
+> **Design system selesai: arah C · Tinta Cetak** ([`docs/design-system.md`](./design-system.md)). Token warna, huruf, dan gerak ada di `app/globals.css` (Tailwind v4 `@theme`; palet, radius, dan bayangan bawaan dihapus), font lewat `next/font/google` (Newsreader + Schibsted Grotesk; Geist sudah dihapus), komponen dasar di `components/ui/`, dan halaman review di `/gaya`. `/masuk`, dialog keluar, dan stub memakai token baru. **Fase 2 (UI) boleh dimulai** di atas komponen ini. Yang belum dirancang: sidebar dan mini-player untuk ponsel, serta konfigurasi `next/image` untuk sampul Storage. Pengujian token (`npm run test:contrast`) dan keyboard/tampilan (`npm run test:keyboard`) berjalan di workflow `app`.
 
 ### 15.1 CI
 
 | Workflow | Isi | Gagal bila |
 |---|---|---|
 | [`db-tests`](../.github/workflows/db-tests.yml) | Supabase CLI **dikunci ke 3.0.0** (langkah pertama menegaskan versinya), `db reset`, uji SQL, konkurensi, API Auth, seed, keep-alive | ada FAIL/ERROR atau versi CLI tidak sama dengan yang dikunci |
-| [`app`](../.github/workflows/app.yml) | `npm ci`, `npm run lint`, `next typegen` + `tsc --noEmit`, `npm run build` dengan env publik dummy | langkah mana pun gagal |
+| [`app`](../.github/workflows/app.yml) | `npm ci`, `npm run lint`, `next typegen` + `tsc --noEmit`, `npm run build` dengan env publik dummy, `npm run test:contrast`, lalu `npm run test:keyboard` (Chrome terhadap build produksi) | langkah mana pun gagal |
 
 Job `app` sudah dibuktikan gagal pada dua cabang sementara (sudah dihapus): galat tipe gagal di langkah *Tipe* (build dilewati), dan komponen klien yang mengimpor modul `server-only` (`lib/supabase/admin.ts`) lolos lint dan tipe tetapi gagal di langkah *Build* — jadi pagar yang mencegah service role bocor ke bundle klien benar-benar terjaga oleh CI. Menaikkan versi CLI dilakukan sengaja dengan mengubah `version:` di `db-tests.yml` dan memeriksa hasil run.
 

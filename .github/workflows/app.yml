@@ -44,3 +44,15 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # Design system: token warna harus lolos kontras WCAG dan status harus berbeda dari kobalt.
+      - name: Kontras token
+        run: npm run test:contrast
+
+      # Slider bisa dipakai dengan keyboard, fokus terlihat, sudut tajam, nomor lagu mengecil di <= 640px.
+      # Dijalankan di Chrome sungguhan terhadap build produksi.
+      - name: Uji keyboard dan tampilan (Chrome)
+        run: |
+          npx next start -p 3000 &
+          curl -fsS --retry 30 --retry-connrefused --retry-delay 1 -o /dev/null http://127.0.0.1:3000/gaya
+          BASE_URL=http://127.0.0.1:3000 npm run test:keyboard

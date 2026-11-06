@@ -10,7 +10,9 @@
     "seed": "node --env-file=.env.local scripts/seed.ts",
     "seed:check": "node scripts/seed.ts --dry-run",
     "test:seed": "node scripts/seed/validation.test.mjs",
-    "test:audio": "node lib/audio/mp3.test.ts"
+    "test:audio": "node lib/audio/mp3.test.ts",
+    "test:contrast": "node scripts/design/contrast.mjs",
+    "test:keyboard": "node scripts/design/keyboard.test.mjs"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "^1.6.3",
