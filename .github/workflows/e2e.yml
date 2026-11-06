@@ -5,6 +5,12 @@ name: e2e
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      update_screenshots:
+        description: "Perbarui tangkapan layar di docs/images/fase2 dan commit ke cabang ini (hanya jalan manual, tidak pernah otomatis)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -18,6 +24,8 @@ jobs:
     name: Playwright (Chrome) terhadap Supabase lokal
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: write # hanya dipakai langkah pembaruan tangkapan layar manual; run biasa tidak menulis apa pun
     env:
       SUPABASE_AUTH_CAPTCHA_SECRET: 1x0000000000000000000000000000000AA
       NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000BB
@@ -70,6 +78,22 @@ jobs:
       - name: Log aplikasi (bila gagal)
         if: failure()
         run: tail -n 80 next.log || true
+
+      # Hanya bila dijalankan manual dengan opsi update_screenshots (Actions -> e2e -> Run workflow).
+      - name: Perbarui tangkapan layar di docs/images/fase2
+        if: github.event_name == 'workflow_dispatch' && inputs.update_screenshots
+        run: |
+          mkdir -p docs/images/fase2
+          cp test-results/shots/*.png docs/images/fase2/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/images/fase2
+          if git diff --cached --quiet; then
+            echo "Tidak ada perubahan pada tangkapan layar."
+          else
+            git commit -m "Update Phase 2 screenshots (manual run)"
+            git push
+          fi
 
       - name: Unggah hasil (tangkapan layar, trace)
         if: always()
