@@ -28,10 +28,13 @@ export function AnonymousSignIn() {
   const router = useRouter();
   const turnstile = useRef<TurnstileInstance>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  // Widget Turnstile dimuat dari skrip Cloudflare. Sebelum siap, execute() tidak melakukan apa-apa dan permintaan Auth
+  // tidak pernah terkirim (ditemukan lewat uji E2E), jadi tombol dinonaktifkan sampai widget benar-benar terpasang.
+  const [widgetReady, setWidgetReady] = useState(false);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   async function signIn() {
-    if (status.kind === "loading") return; // cegah klik ganda
+    if (status.kind === "loading" || !widgetReady) return; // cegah klik ganda dan klik sebelum siap
     setStatus({ kind: "loading" });
     try {
       // Widget berjalan "execute": token hanya diminta saat tombol ditekan, tanpa tantangan bila tak diperlukan.
@@ -60,15 +63,26 @@ export function AnonymousSignIn() {
     );
   }
 
+  const busy = status.kind === "loading" || !widgetReady;
+  const label = !widgetReady ? "Menyiapkan" : status.kind === "loading" ? "Memverifikasi" : status.kind === "error" ? "Coba lagi" : "Coba tanpa daftar";
+
   return (
     <div className="grid gap-4">
-      <Button size="lg" onClick={signIn} loading={status.kind === "loading"} className="w-full">
-        {status.kind === "loading" ? "Memverifikasi" : status.kind === "error" ? "Coba lagi" : "Coba tanpa daftar"}
+      <Button size="lg" onClick={signIn} loading={busy} className="w-full">
+        {label}
       </Button>
 
       {status.kind === "error" && <StatusMessage kind="error" title="Tidak bisa masuk">{status.message}</StatusMessage>}
 
-      <Turnstile ref={turnstile} siteKey={siteKey} options={{ execution: "execute", appearance: "interaction-only" }} />
+      <Turnstile
+        ref={turnstile}
+        siteKey={siteKey}
+        options={{ execution: "execute", appearance: "interaction-only" }}
+        onWidgetLoad={() => setWidgetReady(true)}
+        onError={() => {
+          setStatus({ kind: "error", message: "Verifikasi keamanan gagal dimuat. Muat ulang halaman, lalu coba lagi." });
+        }}
+      />
 
       <p className="text-small text-muted">Mode tamu: data dihapus otomatis setelah 7 hari tidak aktif.</p>
     </div>

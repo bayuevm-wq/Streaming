@@ -48,7 +48,7 @@ test("currentTime terus naik saat berpindah antar rute internal (F2)", async ({ 
     expect(cur.ended, why("lagu berakhir")).toBe(false);
     expect(cur.t, why(`currentTime tidak naik (${prev.t.toFixed(2)} -> ${cur.t.toFixed(2)})`)).toBeGreaterThan(prev.t + 1.2);
     await expect(playerRegion(page), why("player bar hilang")).toBeVisible();
-    await expect(playerRegion(page).getByText(title), why("judul di player bar berubah")).toBeVisible();
+    await expect(playerRegion(page).getByText(title, { exact: true }), why("judul di player bar berubah")).toBeVisible();
     prev = cur;
   }
   expect(prev.t, "total pemutaran sepanjang uji").toBeGreaterThan(first.t + 6 * 1.2);
@@ -88,7 +88,7 @@ test('klik "Lagu berikutnya" cepat dua kali: hanya satu sumber yang berjalan (ta
   const next = playerRegion(page).getByRole("button", { name: "Lagu berikutnya" });
   await next.click();
   await next.click();
-  await expect(playerRegion(page).getByText(titles[2]).first()).toBeVisible();
+  await expect(playerRegion(page).getByText(titles[2], { exact: true })).toBeVisible();
   await page.waitForTimeout(2500);
 
   const a = await sampleAudio(page);
@@ -101,7 +101,7 @@ test('klik "Lagu berikutnya" cepat dua kali: hanya satu sumber yang berjalan (ta
   })();
   expect(b.src, "sumber audio berubah sendiri: hasil permintaan usang menimpa").toBe(a.src);
   expect(b.t).toBeGreaterThan(a.t + 0.8);
-  await expect(playerRegion(page).getByText(titles[2]).first()).toBeVisible();
+  await expect(playerRegion(page).getByText(titles[2], { exact: true })).toBeVisible();
 });
 
 test("slider posisi: Tab + panah kanan memajukan audio sungguhan", async ({ page }) => {

@@ -9,7 +9,15 @@ declare global {
 
 /** Masuk anonim lewat tombol "Coba tanpa daftar" (Turnstile kunci uji + CAPTCHA Supabase lokal). */
 export async function signInAnonymously(page: Page) {
+  // Diagnosa CI: cetak respons Auth yang gagal dan galat konsol halaman (membantu bila masuk anonim gagal).
+  page.on("response", async (r) => {
+    if (r.url().includes("/auth/v1/") && r.status() >= 400) console.log(`AUTH ${r.status()} ${r.url()} ${(await r.text().catch(() => "")).slice(0, 200)}`);
+  });
+  page.on("console", (m) => {
+    if (m.type() === "error") console.log(`KONSOL ${m.text().slice(0, 200)}`);
+  });
   await page.goto("/masuk");
+  // Tombol baru bertuliskan "Coba tanpa daftar" setelah widget Turnstile siap (sebelumnya "Menyiapkan").
   await page.getByRole("button", { name: "Coba tanpa daftar" }).click();
   await page.waitForURL((u) => u.pathname === "/", { timeout: 45_000 });
   await expect(page.getByRole("heading", { level: 1, name: "Beranda" })).toBeVisible();
