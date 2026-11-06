@@ -22,7 +22,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     <div className="grid gap-8 px-6 py-8">
       <header className="grid items-end gap-6 sm:grid-cols-[14rem_minmax(0,1fr)]">
         <div className="w-44 sm:w-56">
-          <Cover src={album.coverUrl} />
+          <Cover src={album.coverUrl} priority />
         </div>
         <div className="grid gap-3">
           <p className="text-small text-muted">Album</p>

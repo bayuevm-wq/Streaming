@@ -92,16 +92,21 @@ export async function getHome() {
 export async function getAlbum(id: string) {
   if (!isUuid(id)) return null;
   const db = await createClient();
-  const { data: album, error } = await db.from("albums").select(ALBUM_SELECT).eq("id", id).maybeSingle();
+  // Album dan lagunya tidak saling bergantung: diminta bersamaan (satu putaran jaringan, bukan dua berurutan).
+  const [albumRes, songsRes] = await Promise.all([
+    db.from("albums").select(ALBUM_SELECT).eq("id", id).maybeSingle(),
+    db
+      .from("songs")
+      .select(SONG_SELECT)
+      .eq("album_id", id)
+      .eq("visibility", "public")
+      .order("track_no", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true }),
+  ]);
+  const { data: album, error } = albumRes;
+  const { data: songs, error: sErr } = songsRes;
   if (error) throw new Error(`Gagal memuat album: ${error.message}`);
   if (!album) return null;
-  const { data: songs, error: sErr } = await db
-    .from("songs")
-    .select(SONG_SELECT)
-    .eq("album_id", id)
-    .eq("visibility", "public")
-    .order("track_no", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: true });
   if (sErr) throw new Error(`Gagal memuat lagu album: ${sErr.message}`);
   return { album: toAlbum(album as unknown as AlbumRow), tracks: (songs as unknown as SongRow[]).map((s) => toTrack(s)) };
 }

@@ -10,10 +10,15 @@ type Props = {
   /** Pengganti gambar, mis. SVG contoh di halaman /gaya. */
   children?: ReactNode;
   className?: string;
+  /**
+   * Sampul di atas lipatan (kepala album/artis): dimuat segera dengan prioritas tinggi. Bawaan: lazy, yang MENUNDA permintaan
+   * gambar sampai browser selesai tata letak dan sering setelah hidrasi; untuk sampul besar itu menunda LCP.
+   */
+  priority?: boolean;
 };
 
 /** Sampul persegi, sudut tajam. Semua sampul memakai rasio 1:1 dan penanganan yang sama. */
-export function Cover({ src, alt = "", children, className }: Props) {
+export function Cover({ src, alt = "", children, className, priority = false }: Props) {
   return (
     <div className={cn("relative aspect-square w-full overflow-hidden bg-raised text-muted", className)}>
       {children ? (
@@ -22,7 +27,14 @@ export function Cover({ src, alt = "", children, className }: Props) {
         </div>
       ) : src ? (
         // eslint-disable-next-line @next/next/no-img-element -- URL Supabase Storage; next/image dikonfigurasi saat Fase 2
-        <img src={src} alt={alt} loading="lazy" decoding="async" className="size-full object-cover" />
+        <img
+          src={src}
+          alt={alt}
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : undefined}
+          decoding="async"
+          className="size-full object-cover"
+        />
       ) : (
         <div className="grid size-full place-items-center text-heading" role={alt ? "img" : undefined} aria-label={alt || undefined} aria-hidden={alt ? undefined : true}>
           <IconMusic />

@@ -4,18 +4,20 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { IconPlaylist, IconPlus } from "@/components/ui/icons";
-import { Skeleton } from "@/components/ui/skeleton";
 import { MAX_PLAYLISTS } from "@/lib/playlists/rules";
-import { usePlaylists } from "@/lib/playlists/store";
+import { usePlaylists, type PlaylistSummary } from "@/lib/playlists/store";
 import { usePlaylistUi } from "@/lib/playlists/ui";
 
-/** Daftar playlist (halaman /playlist; juga jalur masuk di ponsel). Membaca store agar langsung mutakhir. */
-export function PlaylistIndex() {
-  const items = usePlaylists((s) => s.items);
+/**
+ * `initial` dari server: daftar langsung ada di HTML, tanpa menunggu hidrasi klien untuk mengisi store (yang sebelumnya
+ * menahan paragraf LCP di balik Skeleton). Setelah store terisi, store menjadi sumber (pembuatan/penghapusan langsung tampak).
+ */
+export function PlaylistIndex({ initial }: { initial: PlaylistSummary[] }) {
+  const stored = usePlaylists((s) => s.items);
   const hydrated = usePlaylists((s) => s.hydrated);
+  const items = hydrated ? stored : initial;
   const create = () => usePlaylistUi.getState().openCreate();
 
-  if (!hydrated) return <Skeleton className="h-32 w-full" />;
   if (items.length === 0) {
     return (
       <EmptyState

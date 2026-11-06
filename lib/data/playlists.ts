@@ -27,14 +27,15 @@ export async function getPlaylists(): Promise<PlaylistSummary[]> {
 export async function getPlaylist(id: string): Promise<{ id: string; name: string; tracks: Track[] } | null> {
   if (!isUuid(id)) return null;
   const db = await createClient();
-  const { data: pl, error } = await db.from("playlists").select("id,name").eq("id", id).maybeSingle();
+  // Playlist dan isinya diminta bersamaan. Playlist milik orang lain/tak ada: RLS mengembalikan nol baris di keduanya (404 yang sama).
+  const [plRes, songsRes] = await Promise.all([
+    db.from("playlists").select("id,name").eq("id", id).maybeSingle(),
+    db.from("playlist_songs").select(`position, song:songs(${SONG_SELECT})`).eq("playlist_id", id).order("position", { ascending: true }),
+  ]);
+  const { data: pl, error } = plRes;
+  const { data, error: sErr } = songsRes;
   if (error) throw new Error(`Gagal memuat playlist: ${error.message}`);
   if (!pl) return null;
-  const { data, error: sErr } = await db
-    .from("playlist_songs")
-    .select(`position, song:songs(${SONG_SELECT})`)
-    .eq("playlist_id", id)
-    .order("position", { ascending: true });
   if (sErr) throw new Error(`Gagal memuat lagu playlist: ${sErr.message}`);
   const songs = (data as unknown as { song: Ref<SongRow> }[]).map((r) => one(r.song)).filter((s): s is SongRow => s !== null);
   const covers = await privateCoverUrls(db, songs.filter((s) => s.visibility === "private").map((s) => s.cover_path));
