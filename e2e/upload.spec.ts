@@ -1,38 +1,10 @@
-import { expect, test, type Page } from "@playwright/test";
-import { PNG_1X1, silentMp3 } from "../scripts/seed/make-sample.ts";
+import { expect, test } from "@playwright/test";
 import { playerRegion, signInAnonymously, waitForPlayback } from "./helpers";
+import { fillAndSubmit, rest, silentMp3, slots, uploadOk } from "./upload-helpers";
 
 // Fase 4: unggah lagu pribadi (reserve -> TUS -> finalize), /library, hapus, kuota 3, penyimpanan penuh, reservasi
 // kedaluwarsa, dan penolakan berkas palsu. Seluruh jalur memakai Supabase Storage sungguhan di CI.
 
-const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
-const rest = (path: string, init: RequestInit = {}) =>
-  fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: { apikey: SUPABASE_SERVICE_ROLE_KEY!, authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, "content-type": "application/json", prefer: "return=minimal", ...init.headers },
-  });
-
-type Opts = { name?: string; bytes?: Uint8Array; title: string; artist?: string; album?: string; cover?: boolean };
-
-/** Mengisi dan mengirim formulir /unggah. Tidak menunggu hasil. */
-async function fillAndSubmit(page: Page, o: Opts) {
-  await page.goto("/unggah");
-  await expect(page.getByRole("heading", { level: 1, name: "Unggah lagu" })).toBeVisible();
-  await page.getByLabel(/^Berkas MP3/).setInputFiles({ name: o.name ?? "lagu.mp3", mimeType: "audio/mpeg", buffer: Buffer.from(o.bytes ?? silentMp3(30)) });
-  await page.getByLabel("Judul", { exact: true }).fill(o.title);
-  await page.getByLabel("Artis", { exact: true }).fill(o.artist ?? "Penguji");
-  if (o.album) await page.getByLabel(/^Album/).fill(o.album);
-  if (o.cover) await page.getByLabel(/^Sampul/).setInputFiles({ name: "sampul.png", mimeType: "image/png", buffer: Buffer.from(PNG_1X1) });
-  await page.getByRole("button", { name: "Unggah", exact: true }).click();
-}
-
-async function uploadOk(page: Page, o: Opts) {
-  await fillAndSubmit(page, o);
-  await expect(page).toHaveURL((u) => u.pathname === "/library", { timeout: 60_000 });
-  await expect(page.getByText(o.title, { exact: true }).first()).toBeVisible();
-}
-
-const slots = (page: Page) => page.getByTestId("slots");
 
 test("unggah MP3 + sampul: muncul di /library dengan slot 1/3 dan sisa waktu, bisa diputar (signed URL), lalu dihapus", async ({ page }) => {
   await signInAnonymously(page);
@@ -182,4 +154,59 @@ test("penyimpanan penuh: formulir ditutup dengan pesan yang jelas (penolakan di 
   }
   await page.reload();
   await expect(page.getByText("Upload ditutup sementara")).toHaveCount(0);
+});
+
+test("lagu pribadi di playlist: setelah dihapus atau kedaluwarsa, playlist tidak error dan lagu hilang dari tampilan", async ({ page }) => {
+  test.setTimeout(150_000);
+  await signInAnonymously(page);
+  await uploadOk(page, { title: "Playlist P1", bytes: silentMp3(20) });
+  await uploadOk(page, { title: "Playlist P2", bytes: silentMp3(21) });
+
+  // buat playlist dari dialog "Tambahkan ke playlist", lalu isi dengan kedua lagu pribadi
+  await page.getByRole("button", { name: "Tambahkan Playlist P1 ke playlist" }).click();
+  await page.getByRole("dialog", { name: "Tambahkan ke playlist" }).getByRole("button", { name: "Playlist baru" }).click();
+  const create = page.getByRole("dialog", { name: "Playlist baru" });
+  await create.getByLabel("Nama playlist").fill("Campur");
+  await create.getByRole("button", { name: "Buat playlist" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Campur" })).toBeVisible();
+  const playlistUrl = page.url();
+  await page.goto("/library");
+  for (const t of ["Playlist P1", "Playlist P2"]) {
+    await page.getByRole("button", { name: `Tambahkan ${t} ke playlist` }).click();
+    await page.getByRole("dialog", { name: "Tambahkan ke playlist" }).getByRole("button", { name: /Campur/ }).click();
+    await expect(page.getByText(`“${t}” ditambahkan ke “Campur”.`)).toBeVisible();
+  }
+  await page.goto(playlistUrl);
+  await expect(page.getByText(/^2 lagu/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Putar Playlist P1" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Putar Playlist P2" })).toBeVisible();
+
+  // 1) DIHAPUS pemiliknya: hilang dari playlist, tanpa error, hitungan ikut turun
+  await page.goto("/library");
+  await page.getByRole("button", { name: "Hapus Playlist P1" }).click();
+  await page.getByRole("dialog", { name: "Hapus lagu ini?" }).getByRole("button", { name: "Hapus lagu" }).click();
+  await expect(page.getByText("Playlist P1", { exact: true })).toHaveCount(0);
+  await page.goto(playlistUrl);
+  await expect(page.getByRole("heading", { level: 1, name: "Campur" })).toBeVisible();
+  await expect(page.getByText(/^1 lagu/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Putar Playlist P1" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Putar Playlist P2" })).toBeVisible();
+
+  // 2) KEDALUWARSA (jam database dimajukan lewat service role): hilang dari tampilan, playlist tetap terbuka tanpa error
+  const rows = (await (await rest("songs?visibility=eq.private&title=eq.Playlist%20P2&select=id", { headers: { prefer: "" } })).json()) as { id: string }[];
+  expect(rows.length).toBe(1);
+  const r = await rest(`songs?id=eq.${rows[0].id}`, { method: "PATCH", body: JSON.stringify({ expires_at: new Date(Date.now() - 60_000).toISOString() }) });
+  expect(r.ok, `PATCH expires_at: ${r.status}`).toBe(true);
+
+  await page.goto(playlistUrl);
+  await expect(page.getByRole("heading", { level: 1, name: "Campur" })).toBeVisible();
+  await expect(page.getByText("Playlist ini masih kosong")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Putar Playlist P2" })).toHaveCount(0);
+  await expect(page.getByText(/^0 lagu$/)).toBeVisible();
+
+  // daftar playlist dan dialog "Tambahkan" juga tidak error; hitungan 0 lagu
+  await page.goto("/playlist");
+  await expect(page.getByRole("link", { name: /Campur/ })).toContainText("0 lagu");
+  await page.goto("/library");
+  await expect(page.getByText("Library kamu masih kosong")).toBeVisible();
 });

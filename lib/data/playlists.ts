@@ -11,13 +11,15 @@ export async function getPlaylists(): Promise<PlaylistSummary[]> {
   const db = await createClient();
   const { data, error } = await db
     .from("playlists")
-    .select("id,name,created_at,playlist_songs(count)")
+    // songs(id) dikembalikan null untuk lagu yang tak lagi terlihat (RLS: pribadi kedaluwarsa/dihapus), jadi hitungan
+    // hanya memuat lagu yang benar-benar tampil di playlist (spec F8: lagu kedaluwarsa hilang tanpa error).
+    .select("id,name,created_at,playlist_songs(songs(id))")
     .order("created_at", { ascending: false });
   if (error) throw new Error(`Gagal memuat playlist: ${error.message}`);
-  return (data as unknown as { id: string; name: string; playlist_songs: { count: number }[] }[]).map((p) => ({
+  return (data as unknown as { id: string; name: string; playlist_songs: { songs: Ref<{ id: string }> }[] }[]).map((p) => ({
     id: p.id,
     name: p.name,
-    count: p.playlist_songs?.[0]?.count ?? 0,
+    count: (p.playlist_songs ?? []).filter((ps) => one(ps.songs) !== null).length,
   }));
 }
 
