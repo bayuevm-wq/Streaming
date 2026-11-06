@@ -73,9 +73,22 @@ test("pemilih berkas: input file asli bisa difokus, nama terpilih tampil, ganti 
   await waitHydrated(page);
   const input = page.getByLabel("Pilih berkas MP3"); // label tombol terhubung ke input asli
   await expect(input).toHaveAttribute("type", "file");
-  await input.focus();
-  await expect(input).toBeFocused();
   await expect(page.getByText("Belum ada berkas dipilih")).toBeVisible();
+
+  // Operasi keyboard: fokus ke input asli lalu Enter membuka pemilih berkas (inilah arti "bisa diakses keyboard").
+  const chooser = page.waitForEvent("filechooser", { timeout: 10_000 });
+  const focused = await page.evaluate(() => {
+    const el = document.getElementById("audio") as HTMLInputElement;
+    el.focus();
+    return document.activeElement === el;
+  });
+  expect(focused, "input file asli harus bisa menerima fokus").toBe(true);
+  await page.keyboard.press("Enter");
+  const fc = await chooser;
+  expect(fc.isMultiple()).toBe(false);
+  await fc.setFiles({ name: "lewat-keyboard.mp3", mimeType: "audio/mpeg", buffer: Buffer.from(silentMp3(10)) });
+  await expect(page.getByTestId("audio-name")).toContainText("lewat-keyboard.mp3");
+  await page.getByRole("button", { name: "Hapus pilihan: lewat-keyboard.mp3" }).click();
 
   await page.locator("#audio").setInputFiles({ name: "satu.mp3", mimeType: "audio/mpeg", buffer: Buffer.from(silentMp3(10)) });
   await expect(page.getByTestId("audio-name")).toContainText("satu.mp3");
