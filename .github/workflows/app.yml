@@ -60,3 +60,7 @@ jobs:
       # cn() memakai tailwind-merge: kelas bertabrakan diselesaikan dan token kustom terdaftar.
       - name: Uji cn()
         run: npm run test:cn
+
+      # Logika pemutar (antrean, auto-lanjut, balapan "Berikutnya", galat, autoplay ditolak) dengan audio palsu.
+      - name: Uji logika pemutar
+        run: npm run test:player
