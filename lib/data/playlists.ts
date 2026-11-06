@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Track } from "@/lib/player/store";
+import { privateCoverUrls } from "./private-covers";
 import { isUuid, SONG_SELECT, toTrack, type SongRow, one, type Ref } from "./catalog";
 import type { PlaylistSummary } from "@/lib/playlists/store";
 
@@ -35,9 +36,8 @@ export async function getPlaylist(id: string): Promise<{ id: string; name: strin
     .eq("playlist_id", id)
     .order("position", { ascending: true });
   if (sErr) throw new Error(`Gagal memuat lagu playlist: ${sErr.message}`);
-  const tracks = (data as unknown as { song: Ref<SongRow> }[])
-    .map((r) => one(r.song))
-    .filter((s): s is SongRow => s !== null)
-    .map(toTrack);
+  const songs = (data as unknown as { song: Ref<SongRow> }[]).map((r) => one(r.song)).filter((s): s is SongRow => s !== null);
+  const covers = await privateCoverUrls(db, songs.filter((s) => s.visibility === "private").map((s) => s.cover_path));
+  const tracks = songs.map((s) => toTrack(s, covers));
   return { id: pl.id as string, name: pl.name as string, tracks };
 }

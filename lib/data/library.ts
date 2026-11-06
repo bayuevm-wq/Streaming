@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { privateCoverUrls } from "./private-covers";
 import type { Track } from "@/lib/player/store";
 
 // Lagu pribadi milik pengunjung. RLS (songs_read) hanya mengembalikan baris status 'ready', milik sendiri, dan belum
@@ -30,12 +31,7 @@ export async function getMyLibrary(): Promise<PrivateTrack[]> {
   }[];
 
   // sampul pribadi: signed URL 1 jam, dibuat bersamaan untuk semua baris
-  const withCover = rows.filter((r) => r.cover_path).map((r) => r.cover_path as string);
-  const signed = new Map<string, string>();
-  if (withCover.length > 0) {
-    const { data: urls } = await db.storage.from("user-covers").createSignedUrls(withCover, 3600);
-    for (const u of urls ?? []) if (u.path && u.signedUrl) signed.set(u.path, u.signedUrl);
-  }
+  const signed = await privateCoverUrls(db, rows.map((r) => r.cover_path));
 
   return rows.map((r) => ({
     id: r.id,

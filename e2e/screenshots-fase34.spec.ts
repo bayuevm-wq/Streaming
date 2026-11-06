@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { expect, test } from "@playwright/test";
-import { signInAnonymously, waitForPlayback } from "./helpers";
+import { signInAnonymously, waitForPlayback, waitHydrated } from "./helpers";
 import { fillAndSubmit, silentMp3, slots, uploadOk } from "./upload-helpers";
 
 // Tangkapan layar Fase 3 (pencarian, Lagu Disukai, playlist) dan Fase 4 (library, unggah) untuk ditinjau manusia.
@@ -19,6 +19,9 @@ for (const vp of [
     const shot = async (dir: "fase3" | "fase4", name: string) => {
       await page.waitForTimeout(700); // transisi selesai
       await page.screenshot({ path: `${ROOT}/${dir}/${vp.name}-${name}.png` });
+    };
+    const dismissToasts = async () => {
+      for (const b of await page.getByRole("button", { name: "Tutup pesan" }).all()) await b.click().catch(() => undefined);
     };
     const noHScroll = () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
 
@@ -66,6 +69,9 @@ for (const vp of [
     await page.goto(playlistUrl);
     await expect(page.getByRole("heading", { level: 1, name: "Teman perjalanan" })).toBeVisible();
     await expect(page.getByText(/^2 lagu/)).toBeVisible();
+    await waitHydrated(page);
+    await page.getByRole("button", { name: "Putar playlist" }).click(); // pemutar tampil di dasar layar
+    await waitForPlayback(page);
     await shot("fase3", "playlist");
     expect(await noHScroll(), "playlist: scroll horizontal").toBe(true);
 
@@ -78,6 +84,10 @@ for (const vp of [
     await uploadOk(page, { title: "Senja di Stasiun", artist: "Pengunggah", album: "Demo", cover: true });
     await uploadOk(page, { title: "Hujan Pertama", artist: "Pengunggah" });
     await expect(slots(page)).toHaveText("2/3");
+    await waitHydrated(page);
+    await dismissToasts();
+    await page.getByRole("button", { name: /^Putar (Hujan Pertama|Senja di Stasiun)$/ }).first().click(); // lagu pribadi lewat signed URL
+    await waitForPlayback(page);
     await shot("fase4", "library");
     expect(await noHScroll(), "library: scroll horizontal").toBe(true);
 
@@ -107,6 +117,7 @@ for (const vp of [
     await fillAndSubmit(page, { title: "Konser Panjang", artist: "Pengunggah", bytes: silentMp3(520) });
     await expect(page.getByRole("progressbar", { name: "Kemajuan unggahan" })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText(/Mengunggah… \d+%/)).toBeVisible({ timeout: 30_000 });
+    await page.getByRole("progressbar", { name: "Kemajuan unggahan" }).scrollIntoViewIfNeeded();
     await shot("fase4", "unggah-sedang-mengunggah");
     release();
     await expect(page).toHaveURL((u) => u.pathname === "/library", { timeout: 60_000 });

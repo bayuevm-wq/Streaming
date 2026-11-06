@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { publicStorageUrl } from "@/lib/storage-url";
 import type { Track } from "@/lib/player/store";
 import type { AlbumItem, ArtistItem } from "./catalog";
+import { privateCoverUrls } from "./private-covers";
 
 // Pencarian lewat RPC `search_all` (SECURITY INVOKER, jadi RLS berlaku): lagu publik + lagu pribadi MILIK SENDIRI yang
 // belum kedaluwarsa. Input di-escape di SQL dan dikirim sebagai parameter (bukan digabung ke string SQL).
@@ -34,12 +35,13 @@ export async function searchAll(q: string) {
   const { data, error } = await db.rpc("search_all", { p_q: q, p_limit: 20 });
   if (error) throw new Error(`Pencarian gagal: ${error.message}`);
   const r = data as Payload;
+  const covers = await privateCoverUrls(db, r.songs.filter((s) => s.visibility === "private").map((s) => s.cover_path));
   const tracks: Track[] = r.songs.map((s) => ({
     id: s.id,
     title: s.title,
     artist: s.artist ?? "Artis tidak diketahui",
     album: s.album,
-    coverUrl: s.visibility === "public" ? publicStorageUrl("covers", s.cover_path) : null, // sampul pribadi: signed URL (Fase 4)
+    coverUrl: s.visibility === "public" ? publicStorageUrl("covers", s.cover_path) : s.cover_path ? (covers.get(s.cover_path) ?? null) : null,
     audioUrl: s.visibility === "public" ? publicStorageUrl("audio", s.audio_path) : null, // lagu pribadi: signed URL saat diputar (Fase 4)
     durationSec: s.duration_sec,
     visibility: s.visibility,

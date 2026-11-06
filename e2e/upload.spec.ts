@@ -182,6 +182,21 @@ test("lagu pribadi di playlist: setelah dihapus atau kedaluwarsa, playlist tidak
   await expect(page.getByRole("button", { name: "Putar Playlist P1" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Putar Playlist P2" })).toBeVisible();
 
+  // lagu pribadi di playlist HARUS bisa diputar (jalur signed URL), bukan diperlakukan sebagai lagu publik
+  await waitHydrated(page);
+  await page.getByRole("button", { name: "Putar Playlist P1" }).click();
+  await waitForPlayback(page);
+
+  // begitu pula dari Lagu Disukai
+  await page.goto("/library");
+  await waitHydrated(page);
+  await page.getByRole("button", { name: "Sukai Playlist P1" }).click();
+  await expect(page.getByRole("button", { name: "Batal suka Playlist P1" })).toBeVisible();
+  await page.goto("/disukai");
+  await waitHydrated(page);
+  await page.getByRole("button", { name: "Putar Playlist P1" }).click();
+  await waitForPlayback(page);
+
   // 1) DIHAPUS pemiliknya: hilang dari playlist, tanpa error, hitungan ikut turun
   await page.goto("/library");
   await page.getByRole("button", { name: "Hapus Playlist P1" }).click();
