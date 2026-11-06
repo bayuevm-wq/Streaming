@@ -7,6 +7,7 @@ import { Cover } from "@/components/ui/cover";
 import { EmptyState } from "@/components/ui/empty-state";
 import { IconMusic } from "@/components/ui/icons";
 import { getAlbum } from "@/lib/data/catalog";
+import { formatTotalDuration } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Album — Streaming" };
 
@@ -15,7 +16,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const data = await getAlbum(id);
   if (!data) notFound();
   const { album, tracks } = data;
-  const minutes = Math.max(1, Math.round(tracks.reduce((n, t) => n + t.durationSec, 0) / 60));
+  const total = formatTotalDuration(tracks.reduce((n, t) => n + t.durationSec, 0));
 
   return (
     <div className="grid gap-8 px-6 py-8">
@@ -30,7 +31,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             <Link href={`/artis/${album.artistId}`} className="font-semibold text-ink hover:underline">
               {album.artistName}
             </Link>
-            {album.year ? ` · ${album.year}` : ""} · {tracks.length} lagu{tracks.length ? ` · ${minutes} menit` : ""}
+            {album.year ? ` · ${album.year}` : ""} · {tracks.length} lagu{tracks.length ? ` · ${total}` : ""}
           </p>
           <div>
             <PlayAllButton tracks={tracks} label="Putar album" />

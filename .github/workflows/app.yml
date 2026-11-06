@@ -66,3 +66,5 @@ jobs:
         run: npm run test:player
       - name: Uji unit suka (UI optimistis + rollback)
         run: npm run test:likes
+      - name: Uji unit format durasi
+        run: npm run test:format

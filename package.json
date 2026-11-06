@@ -16,6 +16,7 @@
     "test:cn": "node lib/cn.test.ts",
     "test:player": "node lib/player/store.test.ts",
     "test:likes": "node lib/likes/store.test.ts",
+    "test:format": "node lib/format.test.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {
