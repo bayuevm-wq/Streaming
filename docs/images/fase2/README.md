@@ -9,6 +9,8 @@ Dihasilkan oleh `e2e/screenshots.spec.ts` (Chrome, data contoh sintetis dari CI:
 | Artis | [desktop-artis.png](desktop-artis.png) | [ponsel-artis.png](ponsel-artis.png) |
 | Antrean | [desktop-antrean.png](desktop-antrean.png) | [ponsel-antrean.png](ponsel-antrean.png) |
 
+Ponsel sesudah redesain: mini-player 1 baris + navigasi bawah tampak di semua gambar ponsel di atas (lagu sedang diputar); pemutar penuh: [ponsel-pemutar-penuh.png](ponsel-pemutar-penuh.png).
+
 `ponsel-sebelum-redesain/` menyimpan tampilan ponsel **sebelum** mini-player dan navigasi bawah, sebagai pembanding.
 
 ## Memperbarui
