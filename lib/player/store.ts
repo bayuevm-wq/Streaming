@@ -10,6 +10,8 @@ export type Track = {
   title: string;
   artist: string;
   album?: string | null;
+  albumId?: string | null;
+  artistId?: string | null;
   coverUrl: string | null;
   /** URL audio siap putar. Lagu publik: URL publik Storage (dibuat server). Lagu pribadi: kosong; diselesaikan resolver. */
   audioUrl: string | null;

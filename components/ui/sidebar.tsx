@@ -46,14 +46,16 @@ export function Sidebar({ current, playlists, onCreatePlaylist, footer }: Props)
       <nav aria-label="Playlist" className="grid min-h-0 gap-2">
         <div className="flex items-center justify-between px-3">
           <h2 className="text-small font-semibold text-muted">Playlist</h2>
-          <button
-            type="button"
-            onClick={onCreatePlaylist}
-            aria-label="Buat playlist"
-            className="grid size-8 place-items-center text-lead text-ink hover:bg-raised"
-          >
-            <IconPlus />
-          </button>
+          {onCreatePlaylist ? (
+            <button
+              type="button"
+              onClick={onCreatePlaylist}
+              aria-label="Buat playlist"
+              className="grid size-8 place-items-center text-lead text-ink hover:bg-raised"
+            >
+              <IconPlus />
+            </button>
+          ) : null}
         </div>
         {playlists.length === 0 ? (
           <p className="px-3 text-small text-muted">Belum ada playlist.</p>

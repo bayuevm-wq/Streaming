@@ -15,13 +15,14 @@ type Props = {
   duration: number;
   /** 0-100. */
   volume: number;
-  liked: boolean;
+  /** Fase 3 (like). Bila `onToggleLike` tidak diberikan, tombol suka tidak ditampilkan. */
+  liked?: boolean;
   onTogglePlay: () => void;
   onPrev: () => void;
   onNext: () => void;
   onSeek: (seconds: number) => void;
   onVolume: (value: number) => void;
-  onToggleLike: () => void;
+  onToggleLike?: () => void;
   onOpenQueue: () => void;
   className?: string;
 };
@@ -97,21 +98,26 @@ export function PlayerBar(p: Props) {
         </div>
       </div>
 
-      <div className="flex items-center justify-end gap-1 text-muted tablet:hidden">
-        <button
-          type="button"
-          onClick={p.onToggleLike}
-          aria-pressed={p.liked}
-          aria-label={p.liked ? "Batal suka lagu ini" : "Sukai lagu ini"}
-          className={cn("grid size-10 place-items-center text-lead hover:bg-raised", p.liked ? "text-accent" : "text-muted hover:text-ink")}
-        >
-          <IconHeart filled={p.liked} />
-        </button>
+      <div className="flex items-center justify-end gap-1 text-muted tablet:justify-center">
+        {p.onToggleLike ? (
+          <button
+            type="button"
+            onClick={p.onToggleLike}
+            aria-pressed={Boolean(p.liked)}
+            aria-label={p.liked ? "Batal suka lagu ini" : "Sukai lagu ini"}
+            className={cn("grid size-10 place-items-center text-lead hover:bg-raised", p.liked ? "text-accent" : "text-muted hover:text-ink")}
+          >
+            <IconHeart filled={Boolean(p.liked)} />
+          </button>
+        ) : null}
         <button type="button" onClick={p.onOpenQueue} aria-label="Buka antrean" className="grid size-10 place-items-center text-lead hover:bg-raised hover:text-ink">
           <IconQueue />
         </button>
-        <IconVolume className="ml-2 text-lead" />
-        <Slider className="w-24" label="Volume" value={p.volume} max={100} step={5} valueText={`${p.volume}%`} onValueChange={p.onVolume} />
+        {/* Volume disembunyikan di <= 760px: volume diatur perangkat. Antrean dan suka tetap ada. */}
+        <div className="ml-2 flex items-center gap-2 tablet:hidden">
+          <IconVolume className="text-lead" />
+          <Slider className="w-24" label="Volume" value={p.volume} max={100} step={5} valueText={`${p.volume}%`} onValueChange={p.onVolume} />
+        </div>
       </div>
     </section>
   );

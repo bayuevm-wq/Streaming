@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
+import { usePlayer } from "@/lib/player/store";
 
 // Akun anonim tidak bisa dipulihkan, jadi keluar memerlukan konfirmasi (F1).
 export function SignOutButton() {
@@ -14,7 +15,7 @@ export function SignOutButton() {
 
   async function confirmSignOut() {
     setBusy(true);
-    // Fase 2: panggil usePlayer.getState().reset() di sini agar audio berhenti dan antrean kosong.
+    usePlayer.getState().reset(); // audio berhenti dan antrean kosong (spec F1)
     await createClient().auth.signOut();
     router.replace("/masuk");
     router.refresh();
