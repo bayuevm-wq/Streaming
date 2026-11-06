@@ -72,6 +72,10 @@ jobs:
           nohup npx next start -p 3000 > next.log 2>&1 &
           curl -fsS --retry 40 --retry-connrefused --retry-delay 1 -o /dev/null http://127.0.0.1:3000/masuk
 
+      # WebKit (spike S4): browser bawaan Playwright beserta dependensi sistemnya. Chrome yang sudah terpasang dipakai project "chrome".
+      - name: Pasang WebKit
+        run: npx playwright install --with-deps webkit
+
       - name: Playwright
         run: npx playwright test
 
