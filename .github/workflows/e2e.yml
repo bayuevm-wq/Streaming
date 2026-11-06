@@ -71,11 +71,7 @@ jobs:
           # timeout luar membunuh npx tetapi apt-get anaknya tetap hidup memegang kunci dpkg, sehingga ulangan gagal ("Could not
           # get lock", kode 100). Perbaikan: (1) timeout dan ulang di tingkat apt supaya unduhan yang macet gagal dengan sendirinya,
           # (2) bersihkan sisa proses apt/dpkg sebelum mengulang.
-          printf 'Acquire::http::Timeout "30";
-Acquire::https::Timeout "30";
-Acquire::Retries "5";
-DPkg::Lock::Timeout "120";
-' | sudo tee /etc/apt/apt.conf.d/99ci-timeouts >/dev/null
+          printf '%s\n' 'Acquire::http::Timeout "30";' 'Acquire::https::Timeout "30";' 'Acquire::Retries "5";' 'DPkg::Lock::Timeout "120";' | sudo tee /etc/apt/apt.conf.d/99ci-timeouts >/dev/null
           for i in 1 2 3; do
             if timeout -k 10 300 npx playwright install-deps webkit; then exit 0; fi
             echo "install-deps percobaan $i gagal atau melewati batas waktu; membersihkan sisa proses apt lalu mengulang"
