@@ -23,7 +23,12 @@ function TimeLeft({ expiresAt }: { expiresAt: string }) {
     const id = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(id);
   }, []);
-  return <span data-testid="time-left">{formatTimeLeft(new Date(expiresAt).getTime() - now)}</span>;
+  // whitespace-nowrap: "23 j 59 m" tidak boleh terpotong di antara angka dan satuannya saat baris membungkus (ponsel)
+  return (
+    <span data-testid="time-left" className="whitespace-nowrap">
+      {formatTimeLeft(new Date(expiresAt).getTime() - now)}
+    </span>
+  );
 }
 
 /**
