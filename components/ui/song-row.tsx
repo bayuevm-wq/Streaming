@@ -51,7 +51,10 @@ export function SongRow({ index, title, artist, album, durationSec, cover, playi
           <span className="text-lead not-italic">{showPause ? <IconPause /> : <IconPlay />}</span>
         ) : (
           <>
-            <span className="group-hover:hidden group-focus-within:hidden">{index}</span>
+            {/* nomor dekoratif: aria-hidden agar teks tampak tidak "hilang" dari nama aksesibel tombol (WCAG 2.5.3 label in name) */}
+            <span aria-hidden="true" className="group-hover:hidden group-focus-within:hidden">
+              {index}
+            </span>
             <span className="hidden text-lead not-italic group-hover:block group-focus-within:block">
               <IconPlay />
             </span>

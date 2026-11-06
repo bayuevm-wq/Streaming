@@ -35,7 +35,7 @@ export function MiniPlayer({ track, playing, progress, onTogglePlay, onNext, onO
         >
           <span className="size-10 shrink-0">{track.cover}</span>
           <span className="min-w-0">
-            <span className="block truncate font-display text-body leading-tight font-medium italic">{track.title}</span>
+            <span className="block truncate font-display text-body leading-tight font-medium italic">{track.title}</span>{" "}
             <span className="block truncate text-small text-muted">{track.artist}</span>
           </span>
         </button>

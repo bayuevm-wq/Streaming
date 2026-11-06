@@ -82,6 +82,7 @@ jobs:
       # Lighthouse mobile pada halaman area login (median 3 run). Ambang: beranda Performance >= 85 dan Accessibility >= 90
       # (spec); halaman lain Accessibility >= 90. Hasil JSON dan ringkasan ada di artefak e2e-hasil/lighthouse.
       - name: Lighthouse
+        if: always() # tetap berjalan walau E2E gagal, agar angka tersedia
         run: node scripts/lighthouse.mjs
 
       - name: Log aplikasi (bila gagal)
