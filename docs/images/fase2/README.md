@@ -1,6 +1,6 @@
-# Tangkapan layar Fase 2
+# Fase 2: pemutar dan katalog
 
-Dihasilkan oleh `e2e/screenshots.spec.ts` (Chrome, data contoh sintetis dari CI: sampul 1×1 biru dan MP3 sunyi, bukan konten asli).
+Dihasilkan oleh `e2e/screenshots.spec.ts`. Lihat [`../README.md`](../README.md) untuk cara memperbarui.
 
 | Halaman | Desktop 1280px | Ponsel 390px |
 |---|---|---|
@@ -8,11 +8,7 @@ Dihasilkan oleh `e2e/screenshots.spec.ts` (Chrome, data contoh sintetis dari CI:
 | Album | [desktop-album.png](desktop-album.png) | [ponsel-album.png](ponsel-album.png) |
 | Artis | [desktop-artis.png](desktop-artis.png) | [ponsel-artis.png](ponsel-artis.png) |
 | Antrean | [desktop-antrean.png](desktop-antrean.png) | [ponsel-antrean.png](ponsel-antrean.png) |
+| Pemutar di dasar layar | [desktop-player-bar.png](desktop-player-bar.png) (player bar) | [ponsel-mini-player.png](ponsel-mini-player.png) (mini-player) |
+| Pemutar penuh | | [ponsel-pemutar-penuh.png](ponsel-pemutar-penuh.png) |
 
-Ponsel sesudah redesain: mini-player 1 baris + navigasi bawah tampak di semua gambar ponsel di atas (lagu sedang diputar); pemutar penuh: [ponsel-pemutar-penuh.png](ponsel-pemutar-penuh.png).
-
-`ponsel-sebelum-redesain/` menyimpan tampilan ponsel **sebelum** mini-player dan navigasi bawah, sebagai pembanding.
-
-## Memperbarui
-
-Tidak pernah otomatis. Buka **Actions → e2e → Run workflow**, centang `update_screenshots`, jalankan. Workflow menjalankan seluruh E2E lalu meng-commit gambar baru ke cabang yang dipilih. Atau unduh artefak `e2e-hasil` dari run mana pun dan salin isi `shots/`.
+[`ponsel-sebelum-redesain/`](ponsel-sebelum-redesain/) menyimpan tampilan ponsel **sebelum** mini-player dan navigasi bawah (±220px), sebagai pembanding historis; sengaja tidak diperbarui.
