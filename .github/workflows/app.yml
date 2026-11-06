@@ -72,3 +72,5 @@ jobs:
         run: npm run test:playlists
       - name: Uji unit cache URL lagu pribadi (fallback Safari, S4)
         run: npm run test:private-url
+      - name: Uji unit aturan upload (validasi, pesan galat, sisa waktu)
+        run: npm run test:uploads
