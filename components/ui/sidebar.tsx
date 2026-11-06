@@ -8,12 +8,14 @@ type Props = {
   /** Jalur aktif, mis. "/" atau "/library". */
   current: string;
   playlists: { id: string; name: string }[];
+  /** true sampai daftar playlist dimuat. */
+  loading?: boolean;
   onCreatePlaylist?: () => void;
   footer?: ReactNode;
 };
 
 /** Sidebar. Item aktif: teks aksen + garis kiri 3px + aria-current="page" (bukan warna saja). */
-export function Sidebar({ current, playlists, onCreatePlaylist, footer }: Props) {
+export function Sidebar({ current, playlists, loading, onCreatePlaylist, footer }: Props) {
   const item = (active: boolean) =>
     cn(
       "flex items-center gap-3 border-l-[3px] px-3 py-2 text-body hover:bg-surface",
@@ -24,7 +26,7 @@ export function Sidebar({ current, playlists, onCreatePlaylist, footer }: Props)
       <p className="px-3 font-display text-heading font-medium italic">Streaming</p>
       <nav aria-label="Utama">
         <ul className="grid gap-0.5">
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+          {NAV_ITEMS.filter((i) => i.inSidebar).map(({ href, label, icon: Icon }) => {
             const active = current === href;
             return (
               <li key={href}>
@@ -51,7 +53,9 @@ export function Sidebar({ current, playlists, onCreatePlaylist, footer }: Props)
             </button>
           ) : null}
         </div>
-        {playlists.length === 0 ? (
+        {loading ? (
+          <p className="px-3 text-small text-muted">Memuat…</p>
+        ) : playlists.length === 0 ? (
           <p className="px-3 text-small text-muted">Belum ada playlist.</p>
         ) : (
           <ul className="grid gap-0.5 overflow-y-auto">

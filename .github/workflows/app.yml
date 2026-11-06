@@ -68,3 +68,5 @@ jobs:
         run: npm run test:likes
       - name: Uji unit format durasi
         run: npm run test:format
+      - name: Uji unit aturan playlist (nama, batas, pesan galat)
+        run: npm run test:playlists

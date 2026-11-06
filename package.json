@@ -17,6 +17,7 @@
     "test:player": "node lib/player/store.test.ts",
     "test:likes": "node lib/likes/store.test.ts",
     "test:format": "node lib/format.test.ts",
+    "test:playlists": "node lib/playlists/rules.test.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

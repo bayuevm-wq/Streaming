@@ -10,10 +10,10 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** ID bukan UUID dianggap tidak ada (menghindari galat 22P02 dari Postgres). */
 export const isUuid = (v: string) => UUID.test(v);
 
-type Ref<T> = T | T[] | null; // PostgREST bisa mengembalikan objek atau larik untuk relasi
-const one = <T>(r: Ref<T>): T | null => (Array.isArray(r) ? (r[0] ?? null) : r);
+export type Ref<T> = T | T[] | null; // PostgREST bisa mengembalikan objek atau larik untuk relasi
+export const one = <T>(r: Ref<T>): T | null => (Array.isArray(r) ? (r[0] ?? null) : r);
 
-type SongRow = {
+export type SongRow = {
   id: string;
   title: string;
   duration_sec: number;
@@ -26,9 +26,9 @@ type SongRow = {
 export type AlbumItem = { id: string; title: string; year: number | null; coverUrl: string | null; artistId: string; artistName: string };
 export type ArtistItem = { id: string; name: string; imageUrl: string | null };
 
-const SONG_SELECT = "id,title,duration_sec,audio_path,cover_path,track_no,artist:artists(id,name),album:albums(id,title,cover_path)";
+export const SONG_SELECT = "id,title,duration_sec,audio_path,cover_path,track_no,artist:artists(id,name),album:albums(id,title,cover_path)";
 
-function toTrack(r: SongRow): Track {
+export function toTrack(r: SongRow): Track {
   const artist = one(r.artist);
   const album = one(r.album);
   return {

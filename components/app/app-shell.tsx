@@ -8,6 +8,8 @@ import { PlayerBoot } from "./player-boot";
 import { PlayerDock } from "./player-dock";
 import { AppNotices } from "./app-notices";
 import { LikesBootstrap } from "./likes-bootstrap";
+import { PlaylistDialogs } from "./playlist-dialogs";
+import { PlaylistsBootstrap } from "./playlists-bootstrap";
 import { SearchBox } from "./search-box";
 
 /**
@@ -46,6 +48,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Suspense fallback={null}>
         <LikesBootstrap />
       </Suspense>
+      <Suspense fallback={null}>
+        <PlaylistsBootstrap />
+      </Suspense>
+      <PlaylistDialogs />
     </div>
   );
 }
