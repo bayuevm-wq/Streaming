@@ -73,8 +73,16 @@ jobs:
           curl -fsS --retry 40 --retry-connrefused --retry-delay 1 -o /dev/null http://127.0.0.1:3000/masuk
 
       # WebKit (spike S4): browser bawaan Playwright beserta dependensi sistemnya. Chrome yang sudah terpasang dipakai project "chrome".
+      # Pemasangan dependensi sistem lewat apt kadang macet di runner GitHub (pernah >25 menit). Batas waktu per percobaan
+      # dan ulang sampai 3 kali supaya satu mirror yang lambat tidak menggagalkan seluruh run.
       - name: Pasang WebKit
-        run: npx playwright install --with-deps webkit
+        timeout-minutes: 15
+        run: |
+          for i in 1 2 3; do
+            if timeout 240 npx playwright install --with-deps webkit; then exit 0; fi
+            echo "percobaan $i gagal atau melewati batas waktu; mengulang"
+          done
+          exit 1
 
       - name: Playwright
         run: npx playwright test
