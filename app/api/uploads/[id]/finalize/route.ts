@@ -1,6 +1,7 @@
 import "server-only";
 import { checkImage, checkMp3, LIMITS } from "@/lib/audio/mp3";
 import { adminClient, type Admin } from "@/lib/supabase/admin";
+import { requestIsSameOrigin } from "@/lib/security/origin";
 import { currentUser } from "@/lib/supabase/server";
 
 // Langkah 3-4 upload (docs/architecture.md 6.2/6.4): periksa ISI file di server lalu finalize_upload.
@@ -12,7 +13,7 @@ const fail = (status: number, error: string) => Response.json({ error }, { statu
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  if (req.headers.get("origin") !== new URL(req.url).origin) return fail(403, "bad_origin"); // CSRF
+  if (!requestIsSameOrigin(req)) return fail(403, "bad_origin"); // CSRF
   const user = await currentUser();
   if (!user) return fail(401, "unauthenticated");
   if (!/^[0-9a-f-]{36}$/i.test(id)) return fail(404, "not_found");

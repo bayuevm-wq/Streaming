@@ -30,7 +30,7 @@ export async function uploadSong(input: UploadInput, onProgress: (p: Progress) =
     p_album_name: input.album.trim() || null,
     p_cover_ext: cExt,
   });
-  if (error || !data) return { ok: false, problem: problem(fromReserveError(error)) };
+  if (error || !data) return { ok: false, problem: { ...problem(fromReserveError(error)), detail: `reserve ${error?.code ?? ""} ${error?.message ?? "tanpa data"}`.trim() } };
   const res = data as Reservation;
 
   const abort = async (p: Problem): Promise<UploadResult> => {
@@ -47,11 +47,11 @@ export async function uploadSong(input: UploadInput, onProgress: (p: Progress) =
   const audioErr = await tusUpload({ token, bucket: "user-audio", path: res.audio_path, file: input.file, contentType: MIME.mp3 }, (f) =>
     onProgress({ phase: "uploading", percent: Math.round(f * (input.cover ? 95 : 100)) }),
   );
-  if (audioErr) return abort(problem(audioErr));
+  if (audioErr) return abort({ ...problem(audioErr.code), detail: `tus audio ${audioErr.status ?? "tanpa respons"}` });
 
   if (input.cover && res.cover_path && cExt) {
     const coverErr = await tusUpload({ token, bucket: "user-covers", path: res.cover_path, file: input.cover, contentType: MIME[cExt] }, () => undefined);
-    if (coverErr) return abort(problem(coverErr));
+    if (coverErr) return abort({ ...problem(coverErr.code), detail: `tus sampul ${coverErr.status ?? "tanpa respons"}` });
   }
 
   onProgress({ phase: "verifying", percent: 100 });
@@ -59,13 +59,14 @@ export async function uploadSong(input: UploadInput, onProgress: (p: Progress) =
   try {
     r = await fetch(`/api/uploads/${res.song_id}/finalize`, { method: "POST" });
   } catch {
-    return abort(problem("network"));
+    return abort({ ...problem("network"), detail: "finalize tanpa respons" });
   }
   if (!r.ok) {
     const body = (await r.json().catch(() => ({}))) as { error?: string };
     const code = fromFinalize(r.status, body.error);
     // finalize sudah membatalkan reservasi untuk 422; untuk yang lain (409/410/5xx) pembatalan di sini aman dan idempoten
-    return code === "not_mp3" || code === "too_large" || code === "too_small" || code === "bad_cover" ? { ok: false, problem: problem(code) } : abort(problem(code));
+    const p = { ...problem(code), detail: `finalize ${r.status} ${body.error ?? ""}`.trim() };
+    return code === "not_mp3" || code === "too_large" || code === "too_small" || code === "bad_cover" ? { ok: false, problem: p } : abort(p);
   }
   return { ok: true, songId: res.song_id };
 }
@@ -74,7 +75,7 @@ export async function uploadSong(input: UploadInput, onProgress: (p: Progress) =
 function tusUpload(
   o: { token: string; bucket: string; path: string; file: File; contentType: string },
   onFraction: (f: number) => void,
-): Promise<ReturnType<typeof fromStorageStatus> | null> {
+): Promise<{ code: ReturnType<typeof fromStorageStatus>; status?: number } | null> {
   return new Promise((resolve) => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const upload = new tus.Upload(o.file, {
@@ -88,7 +89,7 @@ function tusUpload(
       onProgress: (sent, total) => onFraction(total > 0 ? sent / total : 0),
       onError: (err) => {
         const status = (err as tus.DetailedError).originalResponse?.getStatus();
-        resolve(fromStorageStatus(status));
+        resolve({ code: fromStorageStatus(status), status });
       },
       onSuccess: () => resolve(null),
     });

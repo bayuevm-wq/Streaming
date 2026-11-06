@@ -23,7 +23,7 @@ export type UploadCode =
   | "network"
   | "unknown";
 
-export type Problem = { code: UploadCode; message: string };
+export type Problem = { code: UploadCode; message: string; /** Kode teknis singkat untuk diagnosis, mis. "finalize 403 bad_origin". */ detail?: string };
 
 const MB = (bytes: number) => (bytes / (1024 * 1024)).toFixed(1).replace(".", ",");
 

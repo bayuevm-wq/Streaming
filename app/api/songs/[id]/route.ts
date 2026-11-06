@@ -1,5 +1,6 @@
 import "server-only";
 import { adminClient } from "@/lib/supabase/admin";
+import { requestIsSameOrigin } from "@/lib/security/origin";
 import { createClient, currentUser } from "@/lib/supabase/server";
 
 // Hapus lagu pribadi milik sendiri (docs/architecture.md 14.3 butir 3): kedaluwarsakan dulu (langsung tak terlihat dan
@@ -10,7 +11,7 @@ const fail = (status: number, error: string) => Response.json({ error }, { statu
 
 export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  if (req.headers.get("origin") !== new URL(req.url).origin) return fail(403, "bad_origin");
+  if (!requestIsSameOrigin(req)) return fail(403, "bad_origin");
   const user = await currentUser();
   if (!user) return fail(401, "unauthenticated");
   if (!/^[0-9a-f-]{36}$/i.test(id)) return fail(404, "not_found");

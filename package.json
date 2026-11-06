@@ -20,6 +20,7 @@
     "test:playlists": "node lib/playlists/rules.test.ts",
     "test:private-url": "node lib/player/private-url.test.ts",
     "test:uploads": "node lib/uploads/rules.test.ts",
+    "test:origin": "node lib/security/origin.test.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

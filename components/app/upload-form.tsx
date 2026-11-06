@@ -153,6 +153,7 @@ export function UploadForm({ status }: { status: UploadStatus }) {
           <span data-testid="upload-error" data-code={failure.code}>
             {failure.message}
           </span>
+          {failure.detail ? <span className="mt-1 block text-caption text-muted">Kode teknis: {failure.detail}</span> : null}
         </StatusMessage>
       ) : null}
 
