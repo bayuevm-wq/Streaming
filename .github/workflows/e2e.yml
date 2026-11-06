@@ -23,7 +23,10 @@ jobs:
   e2e:
     name: Playwright (Chrome) terhadap Supabase lokal
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Durasi normal ±14 menit: supabase start+reset ±1,2 mnt, build ±0,2 mnt, WebKit ±0,5 mnt (cache panas ±5 dtk),
+    # Playwright ±4,6 mnt, Lighthouse (7 halaman x 5 run) ±3,5 mnt. Batas 40 menit memberi ruang tanpa menyembunyikan hang:
+    # langkah yang rawan (apt, unduhan, Playwright, Lighthouse) punya timeout sendiri yang lebih ketat.
+    timeout-minutes: 40
     permissions:
       contents: write # hanya dipakai langkah pembaruan tangkapan layar manual; run biasa tidak menulis apa pun
     env:
@@ -47,6 +50,37 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      # WebKit (spike S4). Dipisah supaya gagal cepat dan jelas: (1) versi Playwright, (2) cache unduhan browser,
+      # (3) paket sistem lewat apt, (4) unduhan browser. apt dan unduhan pernah macet >25 menit di runner GitHub
+      # (run 42222913021 dan 42231527137), jadi tiap langkah punya timeout dan diulang sampai 3 kali.
+      - name: Versi Playwright
+        id: pw
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache browser Playwright
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-webkit-${{ steps.pw.outputs.version }}
+
+      - name: Paket sistem WebKit (apt)
+        timeout-minutes: 10
+        run: |
+          for i in 1 2 3; do
+            if timeout 180 npx playwright install-deps webkit; then exit 0; fi
+            echo "install-deps percobaan $i gagal atau melewati batas waktu; mengulang"
+          done
+          exit 1
+
+      - name: Unduh WebKit
+        timeout-minutes: 10
+        run: |
+          for i in 1 2 3; do
+            if timeout 180 npx playwright install webkit; then exit 0; fi
+            echo "unduhan percobaan $i gagal atau melewati batas waktu; mengulang"
+          done
+          exit 1
 
       - name: Variabel lingkungan dari Supabase lokal
         run: |
@@ -72,25 +106,15 @@ jobs:
           nohup npx next start -p 3000 > next.log 2>&1 &
           curl -fsS --retry 40 --retry-connrefused --retry-delay 1 -o /dev/null http://127.0.0.1:3000/masuk
 
-      # WebKit (spike S4): browser bawaan Playwright beserta dependensi sistemnya. Chrome yang sudah terpasang dipakai project "chrome".
-      # Pemasangan dependensi sistem lewat apt kadang macet di runner GitHub (pernah >25 menit). Batas waktu per percobaan
-      # dan ulang sampai 3 kali supaya satu mirror yang lambat tidak menggagalkan seluruh run.
-      - name: Pasang WebKit
-        timeout-minutes: 15
-        run: |
-          for i in 1 2 3; do
-            if timeout 240 npx playwright install --with-deps webkit; then exit 0; fi
-            echo "percobaan $i gagal atau melewati batas waktu; mengulang"
-          done
-          exit 1
-
       - name: Playwright
+        timeout-minutes: 15
         run: npx playwright test
 
       # Lighthouse mobile pada halaman area login (median 3 run). Ambang: beranda Performance >= 85 dan Accessibility >= 90
       # (spec); halaman lain Accessibility >= 90. Hasil JSON dan ringkasan ada di artefak e2e-hasil/lighthouse.
       - name: Lighthouse
         if: always() # tetap berjalan walau E2E gagal, agar angka tersedia
+        timeout-minutes: 10
         run: node scripts/lighthouse.mjs
 
       - name: Log aplikasi (bila gagal)

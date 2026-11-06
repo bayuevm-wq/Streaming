@@ -72,19 +72,28 @@ Jalankan lokal: `npm run lint && npx tsc --noEmit && npm run build` dan skrip `n
 
 Diukur otomatis di CI pada build produksi dengan data contoh sintetis ([run](https://github.com/bayuevm-wq/Streaming/actions/runs/42216852674)), bukan di produksi.
 
-**Lighthouse mobile** (emulasi ponsel + throttling simulasi bawaan; median 3 run per halaman; `scripts/lighthouse.mjs`):
+**Lighthouse mobile** (emulasi ponsel + throttling simulasi bawaan; **median 5 run** per halaman; `scripts/lighthouse.mjs`; [run sesudah](https://github.com/bayuevm-wq/Streaming/actions/runs/42236071251)):
 
-| Halaman | Performance | Accessibility | Best Practices | LCP |
+| Halaman | Performance (5 run) | Accessibility | Best Practices | LCP |
 |---|---|---|---|---|
-| Beranda | 100 | 100 | 100 | 0,9 s |
-| Album | 86 | 100 | 100 | 4,1 s |
-| Artis | 100 | 100 | 100 | 0,9 s |
-| Pencarian | 100 | 100 | 100 | 0,8 s |
-| Library | 100 | 100 | 100 | 0,8 s |
-| Unggah | 100 | 100 | 100 | 0,8 s |
-| Playlist | 84 | 100 | 100 | 4,5 s |
+| Beranda | 100 (100, 100, 84, 100, 100) | 100 | 100 | 0,9 s |
+| Album | 100 (100, 100, 86, 100, 100) | 100 | 100 | 0,8 s |
+| Artis | 100 (100, 100, 100, 84, 100) | 100 | 100 | 0,9 s |
+| Pencarian | 100 (100, 100, 100, 100, 100) | 100 | 100 | 0,8 s |
+| Library | 100 (100, 100, 100, 100, 100) | 100 | 100 | 0,8 s |
+| Unggah | 100 (100, 100, 100, 100, 84) | 100 | 100 | 0,8 s |
+| Playlist | 100 (100, 100, 100, 100, 100) | 100 | 100 | 0,8 s |
 
-Target spec (beranda mobile Performance ≥ 85, Accessibility ≥ 90) **terpenuhi**; ambang itu dijaga di CI (beranda: keduanya; halaman lain: Accessibility ≥ 90). Catatan jujur: skor Performance bervariasi antar run di runner bersama (satu run bisa 84–86 pada halaman yang sama), dan **album dan playlist konsisten punya LCP ±4 detik** di emulasi ponsel; penyebabnya belum didiagnosis (kandidat: rantai pemuatan sampul/font di halaman berkepala besar). Angka ini bukan jaminan untuk produksi sungguhan dengan sampul asli.
+Target spec (beranda mobile Performance ≥ 85, Accessibility ≥ 90) **terpenuhi**; ambang itu dijaga di CI (beranda: keduanya; halaman lain: Accessibility ≥ 90).
+
+**Sebelum dan sesudah perbaikan performa** ([sebelum](https://github.com/bayuevm-wq/Streaming/actions/runs/42229632053), median 5 run, kode yang sama kecuali perubahan di bawah):
+
+| Halaman | Sebelum | Sesudah |
+|---|---|---|
+| Album | 100 (100, 86, 84, 100, 100), median LCP 0,8 s | 100 (100, 100, 86, 100, 100), median LCP 0,8 s |
+| Playlist | **84** (84, 84, 84, 84, 83), LCP **4,5 s** | **100** (5 dari 5), LCP **0,8 s** |
+
+**Diagnosis.** HTML awal sudah memuat isi halaman (FCP ±65 ms). LCP yang terukur selalu jatuh di ±380 ms pada semua halaman yang isinya ada di boundary Suspense, karena skrip streaming React (`$RC`, terbaca di `react-dom` 19.3) menahan pengungkapan boundary sampai **300 ms setelah paint pertama**; ini tidak bisa dikonfigurasi dari aplikasi. Pada sebagian run, simulasi throttling Lighthouse mengubah keterlambatan itu menjadi LCP ±4 s (skor 84–86). Kejadian ini **acak dan tidak khusus satu halaman**: terlihat sekitar 1 dari 5 run pada beranda, album, artis, dan unggah. Yang **khusus** adalah `/playlist` (indeks): isinya menunggu hidrasi klien untuk mengisi store, sehingga terkena setiap kali (84 di 5 dari 5 run). Perbaikan yang diterapkan: indeks `/playlist` dirender server dengan data awal; sampul di atas lipatan (kepala album/artis) tidak lagi `loading="lazy"` (permintaan gambar tertunda sampai setelah tata letak; belum jadi elemen LCP di data contoh karena sampulnya 1×1 piksel, tetapi akan menjadi untuk sampul sungguhan); query album dan playlist dijalankan paralel. **Yang tidak diperbaiki:** lonjakan acak 84–86 (≈1 dari 5 run) tetap ada; menghilangkannya butuh membuat isi katalog masuk ke shell statis (data publik yang di-cache), perubahan desain yang belum diambil. Angka ini diukur di CI dengan data contoh, bukan di produksi.
 
 **Aksesibilitas otomatis:** axe-core (WCAG 2.0/2.1/2.2 A dan AA + praktik terbaik) pada 15 layar dan dialog, desktop dan ponsel (`e2e/a11y.spec.ts`): **0 pelanggaran**. Audit pertama menemukan satu jenis pelanggaran nyata (WCAG 2.5.3, nama aksesibel tombol putar tidak memuat nomor urut yang tampak) dan sudah diperbaiki. Kontras (`test:contrast`) dan keyboard (`test:keyboard`) punya uji sendiri. Otomasi hanya menangkap sebagian masalah: uji dengan pembaca layar dan Safari iOS tetap manual.
 
