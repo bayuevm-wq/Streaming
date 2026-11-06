@@ -25,9 +25,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Versi dikunci agar run tidak berubah diam-diam saat CLI baru terbit (CLI menentukan tag image Postgres,
+      # GoTrue, Storage, dan PostgREST yang dipakai). Naikkan sengaja: ubah nilai ini lalu lihat hasil run.
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 3.0.0
+
+      - name: Versi CLI harus sama dengan yang dikunci
+        run: |
+          supabase --version
+          [ "$(supabase --version | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -1)" = "3.0.0" ]
 
       # Hanya layanan yang dibutuhkan uji: db, auth (skema auth), storage (skema storage), postgrest/kong.
       - name: supabase start

@@ -1,0 +1,46 @@
+name: app
+
+# Memastikan aplikasi Next.js tetap bisa di-lint, dicek tipe, dan di-build. Gagal bila salah satunya rusak.
+# (Uji database ada di workflow db-tests.)
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Lint, tipe, dan build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Nilai publik DUMMY: build tidak menghubungi Supabase, tetapi variabel NEXT_PUBLIC_* disisipkan saat build.
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy-anon-key-untuk-ci
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000BB
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # Tipe rute (PageProps, LayoutProps, RouteContext) dihasilkan Next.js; tsc perlu itu.
+      - name: Tipe
+        run: |
+          npx next typegen
+          npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
