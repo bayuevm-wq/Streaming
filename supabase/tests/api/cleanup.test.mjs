@@ -146,6 +146,8 @@ const D = await signInAnon();
 
 // ================= lease dan pencatatan hasil =================
 {
+  // uji SQL sebelumnya di database yang sama dapat meninggalkan lease "songs"; mulai dari keadaan bersih
+  await admin.rpc("release_job_lease", { p_name: "songs", p_result: {} });
   const first = await admin.rpc("acquire_job_lease", { p_name: "songs", p_ttl: "10 minutes" });
   assert.equal(first.data, true);
   const skipped = await runTask(admin, "songs");

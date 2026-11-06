@@ -9,6 +9,8 @@ export function PlayerBoot() {
   useEffect(() => {
     initPlayer();
     installPrivateAudio();
+    // Penanda hidrasi untuk E2E: sebelum ini, klik/isian pada elemen yang sudah tampil belum punya penangan React.
+    document.documentElement.dataset.hydrated = "1";
   }, []);
   return null;
 }

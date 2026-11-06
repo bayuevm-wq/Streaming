@@ -1,5 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import { PNG_1X1, silentMp3 } from "../scripts/seed/make-sample.ts";
+import { waitHydrated } from "./helpers";
 
 // Pembantu bersama E2E unggah/library/playlist: mengisi formulir /unggah dan akses REST service role (hanya untuk uji).
 
@@ -17,6 +18,7 @@ export type Opts = { name?: string; bytes?: Uint8Array; title: string; artist?: 
 export async function fillAndSubmit(page: Page, o: Opts) {
   await page.goto("/unggah");
   await expect(page.getByRole("heading", { level: 1, name: "Unggah lagu" })).toBeVisible();
+  await waitHydrated(page);
   await page.getByLabel(/^Berkas MP3/).setInputFiles({ name: o.name ?? "lagu.mp3", mimeType: "audio/mpeg", buffer: Buffer.from(o.bytes ?? silentMp3(30)) });
   await page.getByLabel("Judul", { exact: true }).fill(o.title);
   await page.getByLabel("Artis", { exact: true }).fill(o.artist ?? "Penguji");

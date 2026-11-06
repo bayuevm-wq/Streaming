@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { playerRegion, sampleAudio, signInAnonymously, waitForPlayback } from "./helpers";
+import { playerRegion, sampleAudio, signInAnonymously, waitForPlayback, waitHydrated } from "./helpers";
 import { silentMp3, uploadOk } from "./upload-helpers";
 
 // Spike S4 (docs/architecture.md 14.1): apakah putar pertama lagu pribadi lolos di WebKit setelah `await createSignedUrl`,
@@ -51,6 +51,8 @@ test("S4 WebKit: katalog, lagu pribadi (jalur sinkron), seek, next, dan jalur la
   await test.step("jalur sinkron: URL pra-ambil, tanpa permintaan signed URL saat diketuk", async () => {
     signCount = 0;
     await page.goto("/library"); // muat penuh: cache kosong, daftar memicu pra-ambil untuk kedua lagu
+    await waitHydrated(page);
+    await waitHydrated(page);
     await expect(page.getByRole("button", { name: "Putar S4 Pribadi A" })).toBeVisible();
     await expect.poll(() => signCount, { timeout: 20_000, message: "pra-ambil signed URL tidak terjadi" }).toBeGreaterThanOrEqual(2);
     await page.waitForTimeout(500);
@@ -84,6 +86,7 @@ test("S4 WebKit: katalog, lagu pribadi (jalur sinkron), seek, next, dan jalur la
   await test.step("jalur lambat (dicatat, tidak diasersikan)", async () => {
     // buat playlist lewat dialog "Tambahkan ke playlist" lalu isi dengan kedua lagu
     await page.goto("/library");
+    await waitHydrated(page);
     await page.getByRole("button", { name: "Tambahkan S4 Pribadi A ke playlist" }).click();
     await page.getByRole("dialog", { name: "Tambahkan ke playlist" }).getByRole("button", { name: "Playlist baru" }).click();
     const create = page.getByRole("dialog", { name: "Playlist baru" });
@@ -92,12 +95,15 @@ test("S4 WebKit: katalog, lagu pribadi (jalur sinkron), seek, next, dan jalur la
     await expect(page.getByRole("heading", { level: 1, name: "S4 Playlist" })).toBeVisible();
     const playlistUrl = page.url();
     await page.goto("/library");
+    await waitHydrated(page);
     for (const t of ["S4 Pribadi A", "S4 Pribadi B"]) {
       await page.getByRole("button", { name: `Tambahkan ${t} ke playlist` }).click();
       await page.getByRole("dialog", { name: "Tambahkan ke playlist" }).getByRole("button", { name: /S4 Playlist/ }).click();
       await expect(page.getByText(`“${t}” ditambahkan ke “S4 Playlist”.`)).toBeVisible();
     }
     await page.goto(playlistUrl); // muat penuh: cache pra-ambil kosong, dan TrackList tidak memanggil prefetch
+    await waitHydrated(page);
+    await waitHydrated(page); // tanpa ini klik bisa jatuh sebelum React memasang penangan (hasil pengukuran jadi palsu)
     await expect(page.getByRole("button", { name: "Putar S4 Pribadi A" })).toBeVisible();
 
     signCount = 0;

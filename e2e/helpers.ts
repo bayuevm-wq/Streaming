@@ -54,4 +54,9 @@ export async function waitForPlayback(page: Page, minSeconds = 0.5) {
   await expect.poll(async () => (await sampleAudio(page)).t, { timeout: 30_000, message: "audio tidak mulai berjalan" }).toBeGreaterThan(minSeconds);
 }
 
+/** Menunggu React selesai hidrasi di halaman (area login): sebelum itu klik dan isian tidak punya penangan. */
+export async function waitHydrated(page: Page) {
+  await page.waitForFunction(() => document.documentElement.dataset.hydrated === "1");
+}
+
 export const playerRegion = (page: Page) => page.getByRole("region", { name: "Pemutar musik" });

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { playerRegion, signInAnonymously, waitForPlayback } from "./helpers";
+import { playerRegion, signInAnonymously, waitForPlayback, waitHydrated } from "./helpers";
 import { fillAndSubmit, rest, silentMp3, slots, uploadOk } from "./upload-helpers";
 
 // Fase 4: unggah lagu pribadi (reserve -> TUS -> finalize), /library, hapus, kuota 3, penyimpanan penuh, reservasi
@@ -56,6 +56,7 @@ test("MP3 palsu (.exe diganti nama jadi .mp3) ditolak server, tanpa sisa data da
 test("berkas > 10 MB ditolak di klien sebelum reservasi; ekstensi bukan .mp3 ditolak", async ({ page }) => {
   await signInAnonymously(page);
   await page.goto("/unggah");
+  await waitHydrated(page);
   const input = page.getByLabel(/^Berkas MP3/);
   await input.setInputFiles({ name: "besar.mp3", mimeType: "audio/mpeg", buffer: Buffer.alloc(10 * 1024 * 1024 + 1, 1) });
   await expect(page.getByText(/Berkas terlalu besar.*Maksimum 10 MB/)).toBeVisible();
@@ -109,7 +110,7 @@ test("isolasi: B tidak melihat lagu A, dan tidak bisa memfinalisasi atau menghap
   await signInAnonymously(page);
   await uploadOk(page, { title: "Rahasia A" });
   // id lagu A diambil lewat service role (hanya untuk uji)
-  const rows = (await (await rest("songs?visibility=eq.private&title=eq.Rahasia%20A&select=id", { headers: { prefer: "" } })).json()) as { id: string }[];
+  const rows = (await (await rest("songs?visibility=eq.private&title=eq.Rahasia%20A&select=id&order=created_at.desc&limit=1", { headers: { prefer: "" } })).json()) as { id: string }[];
   expect(rows.length).toBe(1);
   const songId = rows[0].id;
 
@@ -193,7 +194,8 @@ test("lagu pribadi di playlist: setelah dihapus atau kedaluwarsa, playlist tidak
   await expect(page.getByRole("button", { name: "Putar Playlist P2" })).toBeVisible();
 
   // 2) KEDALUWARSA (jam database dimajukan lewat service role): hilang dari tampilan, playlist tetap terbuka tanpa error
-  const rows = (await (await rest("songs?visibility=eq.private&title=eq.Playlist%20P2&select=id", { headers: { prefer: "" } })).json()) as { id: string }[];
+  // terbaru dulu: percobaan ulang (retry) memakai database yang sama dan bisa meninggalkan lagu berjudul sama
+  const rows = (await (await rest("songs?visibility=eq.private&title=eq.Playlist%20P2&select=id&order=created_at.desc&limit=1", { headers: { prefer: "" } })).json()) as { id: string }[];
   expect(rows.length).toBe(1);
   const r = await rest(`songs?id=eq.${rows[0].id}`, { method: "PATCH", body: JSON.stringify({ expires_at: new Date(Date.now() - 60_000).toISOString() }) });
   expect(r.ok, `PATCH expires_at: ${r.status}`).toBe(true);
@@ -206,7 +208,7 @@ test("lagu pribadi di playlist: setelah dihapus atau kedaluwarsa, playlist tidak
 
   // daftar playlist dan dialog "Tambahkan" juga tidak error; hitungan 0 lagu
   await page.goto("/playlist");
-  await expect(page.getByRole("link", { name: /Campur/ })).toContainText("0 lagu");
+  await expect(page.getByRole("main").getByRole("link", { name: /Campur/ })).toContainText("0 lagu");
   await page.goto("/library");
   await expect(page.getByText("Library kamu masih kosong")).toBeVisible();
 });
