@@ -44,3 +44,7 @@ next-env.d.ts
 # berkas besar yang tidak masuk git (katalog seed: audio dan cover disediakan lokal)
 /scripts/seed/audio/
 /scripts/seed/covers/
+
+# Playwright
+/test-results/
+/playwright-report/

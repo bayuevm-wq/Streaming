@@ -16,10 +16,10 @@ export const PNG_1X1 = Uint8Array.from(
 );
 
 /** Menulis 3 lagu, 2 album, 2 artis ke `dir`; mengembalikan jalur catalog.json. `prefix` membuat key unik per uji. */
-export function writeSample(dir: string, prefix = "sample"): string {
+export function writeSample(dir: string, prefix = "sample", baseSeconds = 10): string {
   fs.mkdirSync(path.join(dir, "audio"), { recursive: true });
   fs.mkdirSync(path.join(dir, "covers"), { recursive: true });
-  for (const n of [1, 2, 3]) fs.writeFileSync(path.join(dir, "audio", `${prefix}-${n}.mp3`), silentMp3(10 + n));
+  for (const n of [1, 2, 3]) fs.writeFileSync(path.join(dir, "audio", `${prefix}-${n}.mp3`), silentMp3(baseSeconds + n));
   fs.writeFileSync(path.join(dir, "covers", "cover.png"), PNG_1X1);
   const catalog = {
     artists: [{ name: `${prefix} Artis A`, image: "covers/cover.png" }, { name: `${prefix} Artis B` }],

@@ -14,7 +14,8 @@
     "test:contrast": "node scripts/design/contrast.mjs",
     "test:keyboard": "node scripts/design/keyboard.test.mjs",
     "test:cn": "node lib/cn.test.ts",
-    "test:player": "node lib/player/store.test.ts"
+    "test:player": "node lib/player/store.test.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "^1.6.3",
@@ -29,6 +30,7 @@
     "zustand": "^5.0.16"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

@@ -1,0 +1,84 @@
+name: e2e
+
+# Uji end-to-end (Playwright, Google Chrome) terhadap build produksi + Supabase CLI lokal + katalog contoh sintetis.
+# Pembuktian spec F2: audio.currentTime terus naik saat berpindah antar rute internal.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Playwright (Chrome) terhadap Supabase lokal
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_AUTH_CAPTCHA_SECRET: 1x0000000000000000000000000000000AA
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000BB
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 3.0.0
+
+      - name: supabase start dan db reset
+        run: |
+          supabase start -x realtime,imgproxy,mailpit,studio,edge-runtime,logflare,vector,supavisor,postgres-meta
+          supabase db reset
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Variabel lingkungan dari Supabase lokal
+        run: |
+          eval "$(supabase status -o env | sed 's/^/export /')"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY:-${PUBLISHABLE_KEY:-}}"
+            echo "SUPABASE_URL=$API_URL"
+            echo "SUPABASE_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY:-${SECRET_KEY:-}}"
+          } >> "$GITHUB_ENV"
+
+      # Katalog contoh SEMENTARA (MP3 sunyi sintetis, bukan musik) sampai scripts/seed/catalog.json diisi lagu asli.
+      - name: Seed katalog contoh
+        run: |
+          node scripts/seed/make-e2e-catalog.ts "$RUNNER_TEMP/e2e-catalog"
+          node scripts/seed.ts --relaxed --catalog "$RUNNER_TEMP/e2e-catalog/catalog.json"
+
+      - name: Build
+        run: npm run build
+
+      - name: Jalankan aplikasi
+        run: |
+          nohup npx next start -p 3000 > next.log 2>&1 &
+          curl -fsS --retry 40 --retry-connrefused --retry-delay 1 -o /dev/null http://127.0.0.1:3000/masuk
+
+      - name: Playwright
+        run: npx playwright test
+
+      - name: Log aplikasi (bila gagal)
+        if: failure()
+        run: tail -n 80 next.log || true
+
+      - name: Unggah hasil (tangkapan layar, trace)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-hasil
+          path: test-results/
+          if-no-files-found: ignore
+
+      - name: supabase stop
+        if: always()
+        run: supabase stop --no-backup
