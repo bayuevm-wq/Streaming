@@ -7,7 +7,7 @@
 // Ambang (spec: Lighthouse beranda mobile Performance >= 85 dan Accessibility >= 90):
 //   - beranda: Performance >= 0.85 dan Accessibility >= 0.90 (GAGAL bila kurang)
 //   - halaman lain: Accessibility >= 0.90 (GAGAL bila kurang); Performance hanya dilaporkan
-// Skor Performance bervariasi antar run (runner CI bersama); skrip mengambil MEDIAN dari 3 run per halaman.
+// Skor Performance bervariasi antar run (runner CI bersama); skrip mengambil MEDIAN dari 5 run per halaman.
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -17,7 +17,7 @@ import lighthouse from "lighthouse";
 const BASE = process.env.BASE_URL ?? "http://127.0.0.1:3000";
 const OUT = "test-results/lighthouse";
 const PORT = 9333;
-const RUNS = 3;
+const RUNS = Number(process.env.LH_RUNS ?? 5);
 fs.mkdirSync(OUT, { recursive: true });
 
 const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "lh-"));
