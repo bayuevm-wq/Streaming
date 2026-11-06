@@ -7,6 +7,7 @@ import { MiniPlayer } from "@/components/ui/mini-player";
 import { PlayerBar } from "@/components/ui/player-bar";
 import { useLikes } from "@/lib/likes/store";
 import { usePlayer, useProgress } from "@/lib/player/store";
+import { MiniProgress } from "./mini-progress";
 import { QueueDialog } from "./queue-dialog";
 
 /**
@@ -56,8 +57,7 @@ export function PlayerDock() {
             className="hidden tablet:block"
             track={{ title: track.title, artist: track.artist, cover: <Cover src={track.coverUrl} /> }}
             playing={playing}
-            position={position}
-            duration={total}
+            progress={<MiniProgress fallbackDuration={track.durationSec} />}
             onTogglePlay={toggle}
             onNext={() => void next()}
             onOpen={() => setFullOpen(true)}

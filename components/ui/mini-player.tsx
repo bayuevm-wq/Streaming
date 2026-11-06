@@ -5,9 +5,9 @@ import { IconNext, IconPause, IconPlay } from "./icons";
 type Props = {
   track: { title: string; artist: string; cover: ReactNode };
   playing: boolean;
-  /** Detik. Hanya untuk garis progres tipis (tidak interaktif; geser posisi ada di pemutar penuh). */
-  position: number;
-  duration: number;
+  /** Garis progres tipis di tepi atas (tidak interaktif; geser posisi ada di pemutar penuh). Diberikan sebagai slot agar
+   * hanya komponen kecil itu yang berlangganan posisi (4x/detik), bukan seluruh pemutar. */
+  progress?: ReactNode;
   onTogglePlay: () => void;
   onNext: () => void;
   /** Membuka pemutar penuh (FullPlayer). */
@@ -19,16 +19,13 @@ type Props = {
  * Mini-player untuk layar <= 760px: satu baris setinggi ~58px (sampul 40px + judul/artis + putar/jeda + berikutnya).
  * Mengetuk area lagu membuka pemutar penuh. Progres hanya garis 2px di tepi atas (dekoratif, aria-hidden).
  */
-export function MiniPlayer({ track, playing, position, duration, onTogglePlay, onNext, onOpen, className }: Props) {
-  const pct = duration > 0 ? Math.min(100, Math.max(0, (position / duration) * 100)) : 0;
+export function MiniPlayer({ track, playing, progress, onTogglePlay, onNext, onOpen, className }: Props) {
   return (
     <section aria-label="Pemutar musik" className={cn("relative border-t border-hairline bg-surface", className)}>
       <p className="sr-only" aria-live="polite">
         {playing ? "Sedang diputar" : "Dijeda"}: {track.title}, {track.artist}
       </p>
-      <div aria-hidden="true" className="absolute inset-x-0 top-0 h-0.5 bg-control">
-        <div className="h-full bg-accent" style={{ width: `${pct}%` }} />
-      </div>
+      {progress}
       <div className="flex items-center pr-1">
         <button
           type="button"

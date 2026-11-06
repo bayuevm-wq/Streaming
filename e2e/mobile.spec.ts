@@ -22,6 +22,27 @@ test("ponsel: mini-player + navigasi bawah < 130px, audio tetap berjalan, pemuta
   expect(used, `mini-player ${mb?.height} + navigasi bawah ${nb?.height} px`).toBeLessThan(130);
   expect(nb?.height ?? 0, "target sentuh navigasi bawah >= 56px").toBeGreaterThanOrEqual(56);
 
+  // garis progres mini-player: ada di tepi atas dan terisi seiring waktu (tidak menambah tinggi: absolut 2px)
+  const line = mini.getByTestId("mini-progress");
+  const scale = async () => line.locator("div").evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).a);
+  const s1 = await scale();
+  await expect.poll(scale, { timeout: 10_000, message: "garis progres tidak bertambah" }).toBeGreaterThan(s1);
+  const lb = await line.boundingBox();
+  expect(lb?.height).toBe(2);
+  expect(Math.abs((lb?.y ?? 0) - (mb?.y ?? 0)), "garis progres di tepi atas mini-player").toBeLessThanOrEqual(1);
+
+  // placeholder pencarian muat penuh di 390px (tidak terpotong)
+  const input = page.getByRole("searchbox", { name: "Cari lagu, album, atau artis" });
+  expect(await input.getAttribute("placeholder")).toBe("Cari lagu, album, artis");
+  const fits = await input.evaluate((el: HTMLInputElement) => {
+    const cs = getComputedStyle(el);
+    const c = document.createElement("canvas").getContext("2d")!;
+    c.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    const avail = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    return { text: c.measureText(el.placeholder).width, avail };
+  });
+  expect(fits.text, `placeholder ${fits.text}px > ruang ${fits.avail}px`).toBeLessThanOrEqual(fits.avail);
+
   // navigasi bawah: audio tidak terputus, item aktif bertanda aria-current
   const first = await sampleAudio(page);
   let prev = first;

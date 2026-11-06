@@ -60,7 +60,7 @@ export function SearchBox() {
         type="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Cari lagu, album, atau artis"
+        placeholder="Cari lagu, album, artis"
         autoComplete="off"
         maxLength={MAX_LENGTH}
         className="h-10 w-full border border-control bg-surface pr-3 pl-10 text-body text-ink placeholder:text-muted hover:border-ink"

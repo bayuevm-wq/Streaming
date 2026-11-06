@@ -211,7 +211,7 @@ export function MobileDemo() {
           <p className="font-display text-heading font-medium italic">Beranda</p>
           <p className="mt-2 text-small text-muted">Area konten. Di bawahnya: mini-player satu baris dan navigasi bawah, bukan player bar setinggi ±220px.</p>
         </div>
-        <MiniPlayer track={track} playing={playing} position={pos} duration={song.duration} onTogglePlay={() => setPlaying((p) => !p)} onNext={() => setPos(0)} onOpen={() => setFull(true)} />
+        <MiniPlayer track={track} playing={playing} progress={<div aria-hidden="true" className="absolute inset-x-0 top-0 h-0.5 bg-control"><div className="h-full origin-left bg-accent" style={{ transform: `scaleX(${pos / song.duration})` }} /></div>} onTogglePlay={() => setPlaying((p) => !p)} onNext={() => setPos(0)} onOpen={() => setFull(true)} />
         <BottomNav current="/" />
       </div>
       <FullPlayer
