@@ -115,6 +115,15 @@ jobs:
           export SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:-${SECRET_KEY:-}}"
           node supabase/tests/api/storage-spike.test.mjs
 
+      # F18: logika job pembersih (file dulu, baris kemudian; tombstone; yatim; lease) terhadap Supabase CLI sungguhan.
+      - name: Uji job pembersih F18 (cleanup)
+        run: |
+          eval "$(supabase status -o env | sed 's/^/export /')"
+          export SUPABASE_URL="$API_URL"
+          export SUPABASE_ANON_KEY="${ANON_KEY:-${PUBLISHABLE_KEY:-}}"
+          export SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:-${SECRET_KEY:-}}"
+          node supabase/tests/api/cleanup.test.mjs
+
       - name: Diagnosa (hanya bila gagal)
         if: failure()
         run: |
