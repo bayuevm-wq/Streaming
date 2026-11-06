@@ -19,11 +19,11 @@ export async function fillAndSubmit(page: Page, o: Opts) {
   await page.goto("/unggah");
   await expect(page.getByRole("heading", { level: 1, name: "Unggah lagu" })).toBeVisible();
   await waitHydrated(page);
-  await page.getByLabel(/^Berkas MP3/).setInputFiles({ name: o.name ?? "lagu.mp3", mimeType: "audio/mpeg", buffer: Buffer.from(o.bytes ?? silentMp3(30)) });
+  await page.locator("#audio").setInputFiles({ name: o.name ?? "lagu.mp3", mimeType: "audio/mpeg", buffer: Buffer.from(o.bytes ?? silentMp3(30)) });
   await page.getByLabel("Judul", { exact: true }).fill(o.title);
   await page.getByLabel("Artis", { exact: true }).fill(o.artist ?? "Penguji");
   if (o.album) await page.getByLabel(/^Album/).fill(o.album);
-  if (o.cover) await page.getByLabel(/^Sampul/).setInputFiles({ name: "sampul.png", mimeType: "image/png", buffer: Buffer.from(PNG_1X1) });
+  if (o.cover) await page.locator("#cover").setInputFiles({ name: "sampul.png", mimeType: "image/png", buffer: Buffer.from(PNG_1X1) });
   await page.getByRole("button", { name: "Unggah", exact: true }).click();
 }
 

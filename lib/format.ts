@@ -21,3 +21,11 @@ export function formatTotalDuration(totalSeconds: number): string {
   if (m < 10) return s % 60 > 0 ? `${m} mnt ${s % 60} dtk` : `${m} mnt`;
   return `${m} mnt`;
 }
+
+/** Ukuran berkas untuk manusia, desimal koma: 340 -> "340 B", 1536 -> "1,5 KB", 8_650_752 -> "8,3 MB". */
+export function formatFileSize(bytes: number): string {
+  const n = Math.max(0, bytes);
+  if (n < 1024) return `${Math.round(n)} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1).replace(".", ",")} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
+}

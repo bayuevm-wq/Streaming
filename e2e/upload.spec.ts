@@ -39,27 +39,74 @@ test("unggah 8 MB (dua potongan TUS 6 MB) berhasil", async ({ page }) => {
   await expect(slots(page)).toHaveText("1/3");
 });
 
-test("MP3 palsu (.exe diganti nama jadi .mp3) ditolak server, tanpa sisa data dan slot kembali bebas", async ({ page }) => {
-  await signInAnonymously(page);
-  const exe = new Uint8Array(40 * 1024).map((_, i) => (i * 31 + 7) & 0xff);
-  exe.set([0x4d, 0x5a, 0x90, 0x00], 0); // "MZ": header Windows executable
-  await fillAndSubmit(page, { name: "virus.mp3", bytes: exe, title: "Bukan Lagu" });
-  const err = page.getByTestId("upload-error");
-  await expect(err).toHaveAttribute("data-code", "not_mp3", { timeout: 60_000 });
-  await expect(err).toContainText("bukan MP3 yang valid");
+for (const vp of [
+  { name: "desktop", width: 1280, height: 800 },
+  { name: "ponsel", width: 390, height: 844 },
+]) {
+  test(`MP3 palsu (.exe diganti nama jadi .mp3) ditolak server; pesannya di atas formulir, terlihat di viewport dan terfokus (${vp.name})`, async ({ page }) => {
+    await page.setViewportSize({ width: vp.width, height: vp.height });
+    await signInAnonymously(page);
+    const exe = new Uint8Array(40 * 1024).map((_, i) => (i * 31 + 7) & 0xff);
+    exe.set([0x4d, 0x5a, 0x90, 0x00], 0); // "MZ": header Windows executable
+    await fillAndSubmit(page, { name: "virus.mp3", bytes: exe, title: "Bukan Lagu" });
+    const err = page.getByTestId("upload-error");
+    await expect(err).toHaveAttribute("data-code", "not_mp3", { timeout: 60_000 });
+    await expect(err).toContainText("bukan MP3 yang valid");
 
-  await page.goto("/library");
-  await expect(page.getByText("Library kamu masih kosong")).toBeVisible();
-  await expect(slots(page)).toHaveText("0/3"); // reject_upload membebaskan slot
+    // pesan terlihat DI DALAM viewport (bukan di bawah layar), terfokus, dan berada di atas formulir
+    const box = page.getByTestId("upload-error-box");
+    await expect(box).toBeInViewport({ ratio: 1 });
+    await expect(box).toBeFocused();
+    await expect(box.getByRole("alert")).toBeVisible();
+    const [boxY, fieldY] = await Promise.all([box.boundingBox().then((r) => r!.y), page.locator("#audio").boundingBox().then((r) => r!.y)]);
+    expect(boxY, "pesan galat harus di atas bidang formulir").toBeLessThan(fieldY);
+
+    await page.goto("/library");
+    await expect(page.getByText("Library kamu masih kosong")).toBeVisible();
+    await expect(slots(page)).toHaveText("0/3"); // reject_upload membebaskan slot
+  });
+}
+
+test("pemilih berkas: input file asli bisa difokus, nama terpilih tampil, ganti dan hapus pilihan", async ({ page }) => {
+  await signInAnonymously(page);
+  await page.goto("/unggah");
+  await waitHydrated(page);
+  const input = page.getByLabel("Pilih berkas MP3"); // label tombol terhubung ke input asli
+  await expect(input).toHaveAttribute("type", "file");
+  await input.focus();
+  await expect(input).toBeFocused();
+  await expect(page.getByText("Belum ada berkas dipilih")).toBeVisible();
+
+  await page.locator("#audio").setInputFiles({ name: "satu.mp3", mimeType: "audio/mpeg", buffer: Buffer.from(silentMp3(10)) });
+  await expect(page.getByTestId("audio-name")).toContainText("satu.mp3");
+  await expect(page.getByLabel("Ganti berkas MP3")).toHaveAttribute("type", "file"); // label berubah menjadi "Ganti"
+  await page.locator("#audio").setInputFiles({ name: "dua.mp3", mimeType: "audio/mpeg", buffer: Buffer.from(silentMp3(10)) });
+  await expect(page.getByTestId("audio-name")).toContainText("dua.mp3");
+  await page.getByRole("button", { name: "Hapus pilihan: dua.mp3" }).click();
+  await expect(page.getByText("Belum ada berkas dipilih")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Unggah", exact: true })).toBeDisabled();
+  await expect(page.getByLabel("Pilih sampul")).toHaveAttribute("type", "file");
+});
+
+test("ponsel: sisa waktu lagu di Library tidak terpotong di antara angka dan satuan", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signInAnonymously(page);
+  await uploadOk(page, { title: "Satu Baris", bytes: silentMp3(20) });
+  const t = page.getByTestId("time-left").first();
+  await expect(t).toBeVisible();
+  // elemen inline yang terpotong antar baris punya lebih dari satu kotak (client rect)
+  const rects = await t.evaluate((el) => el.getClientRects().length);
+  expect(rects, "sisa waktu terbagi ke dua baris").toBe(1);
 });
 
 test("berkas > 10 MB ditolak di klien sebelum reservasi; ekstensi bukan .mp3 ditolak", async ({ page }) => {
   await signInAnonymously(page);
   await page.goto("/unggah");
   await waitHydrated(page);
-  const input = page.getByLabel(/^Berkas MP3/);
+  const input = page.locator("#audio");
   await input.setInputFiles({ name: "besar.mp3", mimeType: "audio/mpeg", buffer: Buffer.alloc(10 * 1024 * 1024 + 1, 1) });
   await expect(page.getByText(/Berkas terlalu besar.*Maksimum 10 MB/)).toBeVisible();
+  await expect(page.getByTestId("audio-name")).toContainText("besar.mp3"); // nama berkas terpilih tampil
   await expect(page.getByRole("button", { name: "Unggah", exact: true })).toBeDisabled();
 
   await input.setInputFiles({ name: "lagu.wav", mimeType: "audio/wav", buffer: Buffer.from(silentMp3(10)) });
@@ -78,14 +125,18 @@ test("kuota 3 lagu: slot 3/3 menonaktifkan formulir dengan pesan jelas", async (
   await page.goto("/unggah");
   await expect(page.getByText("Slot penuh (3/3)")).toBeVisible();
   await expect(page.getByText(/Kamu sudah memakai 3 dari 3 slot/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Unggah", exact: true })).toBeDisabled();
+  // formulir disembunyikan (bukan sekadar dinonaktifkan); jalan keluarnya adalah tombol "Buka Library"
+  await expect(page.getByRole("button", { name: "Unggah", exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("Pilih berkas MP3")).toHaveCount(0);
+  await page.getByRole("link", { name: "Buka Library" }).click();
+  await expect(page).toHaveURL((u) => u.pathname === "/library");
   // hapus satu: slot bebas dan formulir aktif lagi
-  await page.goto("/library");
   await page.getByRole("button", { name: "Hapus Kuota 1" }).click();
   await page.getByRole("dialog", { name: "Hapus lagu ini?" }).getByRole("button", { name: "Hapus lagu" }).click();
   await expect(slots(page)).toHaveText("2/3");
   await page.goto("/unggah");
   await expect(page.getByText("Slot penuh (3/3)")).toHaveCount(0);
+  await expect(page.getByLabel("Pilih berkas MP3")).toBeVisible();
 });
 
 test("reservasi kedaluwarsa (410): pesan jelas dan tidak ada data tersisa", async ({ page }) => {
@@ -149,7 +200,8 @@ test("penyimpanan penuh: formulir ditutup dengan pesan yang jelas (penolakan di 
     await page.goto("/unggah");
     await expect(page.getByText("Upload ditutup sementara")).toBeVisible();
     await expect(page.getByText("Upload sedang ditutup sementara karena penyimpanan penuh. Coba lagi nanti.")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Unggah", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Unggah", exact: true })).toHaveCount(0); // formulir disembunyikan
+    await expect(page.getByRole("link", { name: "Buka Library" })).toBeVisible();
   } finally {
     expect((await set(524288000)).ok).toBe(true);
   }

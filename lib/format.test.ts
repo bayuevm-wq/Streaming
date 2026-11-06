@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { formatTime, formatTotalDuration } from "./format.ts";
+import { formatFileSize, formatTime, formatTotalDuration } from "./format.ts";
 
 const cases: [number, string][] = [
   [0, "0 dtk"],
@@ -20,6 +20,7 @@ for (const [input, want] of cases) {
   assert.equal(formatTotalDuration(input), want, `formatTotalDuration(${input})`);
   console.log(`PASS ${input} -> ${want}`);
 }
+for (const [b, want] of [[0, "0 B"], [340, "340 B"], [1536, "1,5 KB"], [8650752, "8,3 MB"], [10485760, "10,0 MB"], [-1, "0 B"]] as [number, string][]) assert.equal(formatFileSize(b), want, `formatFileSize(${b})`);
 assert.equal(formatTime(92), "1:32");
 assert.equal(formatTime(3725), "1:02:05");
 console.log("SEMUA LULUS");

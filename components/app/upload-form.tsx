@@ -1,8 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
+import { FileField } from "@/components/ui/file-field";
 import { StatusMessage } from "@/components/ui/status";
 import { TextField } from "@/components/ui/text-field";
 import type { UploadStatus } from "@/lib/data/library";
@@ -18,7 +20,9 @@ const PHASE_LABEL: Record<Progress["phase"], string> = {
 
 /**
  * Formulir unggah (spec F5). Cek klien (ekstensi/ukuran) hanya untuk kecepatan; isi file diperiksa server di `finalize`.
- * Tombol dinonaktifkan selama proses agar tak terkirim ganda; kuota 3 lagu dan penyimpanan penuh menonaktifkan formulir.
+ * - Galat unggahan tampil DI ATAS formulir (dekat judul), lalu halaman menggulir dan memfokuskannya (role="alert").
+ * - Slot penuh (3/3) atau penyimpanan penuh: formulir disembunyikan; yang tampil pesan dan tombol "Buka Library".
+ * - Tombol kirim dinonaktifkan selama proses agar tak terkirim ganda.
  */
 export function UploadForm({ status }: { status: UploadStatus }) {
   const router = useRouter();
@@ -32,11 +36,21 @@ export function UploadForm({ status }: { status: UploadStatus }) {
   const [failure, setFailure] = useState<Problem | null>(null);
   const [progress, setProgress] = useState<Progress | null>(null);
   const busy = useRef(false);
+  const failureRef = useRef<HTMLDivElement>(null);
 
   const quotaFull = status.active >= status.max;
   const closed = !status.storage_open;
   const blocked = quotaFull || closed;
   const working = progress !== null;
+
+  // Pesan galat harus terlihat di viewport: gulir ke sana dan pindahkan fokus (pembaca layar membacakan role="alert").
+  useEffect(() => {
+    if (!failure) return;
+    const el = failureRef.current;
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    el.scrollIntoView({ block: "center", behavior: "auto" });
+  }, [failure]);
 
   function pickFile(f: File | null) {
     setFile(f);
@@ -72,9 +86,16 @@ export function UploadForm({ status }: { status: UploadStatus }) {
 
   return (
     <form onSubmit={submit} className="grid max-w-xl gap-6" aria-busy={working}>
-      <StatusMessage kind="warning" title="Perlu diketahui">
-        Lagu pribadi terhapus otomatis setelah {TTL_HOURS} jam. Unggah hanya musik yang kamu punya haknya.
-      </StatusMessage>
+      {failure ? (
+        <div ref={failureRef} tabIndex={-1} data-testid="upload-error-box" className="scroll-mt-4 outline-none">
+          <StatusMessage kind="error" title="Unggahan gagal">
+            <span data-testid="upload-error" data-code={failure.code}>
+              {failure.message}
+            </span>
+            {failure.detail ? <span className="mt-1 block text-caption text-muted">Kode teknis: {failure.detail}</span> : null}
+          </StatusMessage>
+        </div>
+      ) : null}
 
       {quotaFull ? (
         <StatusMessage kind="error" title={`Slot penuh (${status.active}/${status.max})`}>
@@ -87,81 +108,76 @@ export function UploadForm({ status }: { status: UploadStatus }) {
         </StatusMessage>
       ) : null}
 
-      <fieldset disabled={blocked || working} className="grid gap-5 disabled:opacity-60">
-        <div className="grid gap-2">
-          <label htmlFor="audio" className="text-small font-semibold text-ink">
-            Berkas MP3 (maks 10 MB)
-          </label>
-          <input
-            id="audio"
-            type="file"
-            accept=".mp3,audio/mpeg"
-            aria-describedby={fileProblem ? "audio-error" : undefined}
-            aria-invalid={fileProblem ? true : undefined}
-            onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
-            className="text-body text-ink file:mr-3 file:border file:border-control file:bg-surface file:px-3 file:py-2 file:text-body file:text-ink hover:file:bg-raised"
-          />
-          {fileProblem ? (
-            <p id="audio-error" role="alert" className="text-small text-error">
-              {fileProblem.message}
-            </p>
-          ) : null}
-        </div>
-        <TextField label="Judul" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} required autoComplete="off" />
-        <TextField label="Artis" value={artist} onChange={(e) => setArtist(e.target.value)} maxLength={120} required autoComplete="off" />
-        <TextField label="Album (opsional)" value={album} onChange={(e) => setAlbum(e.target.value)} maxLength={120} autoComplete="off" />
-        <div className="grid gap-2">
-          <label htmlFor="cover" className="text-small font-semibold text-ink">
-            Sampul (opsional; JPG, PNG, atau WebP, maks 2 MB)
-          </label>
-          <input
-            id="cover"
-            type="file"
-            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-            aria-describedby={coverProblem ? "cover-error" : undefined}
-            onChange={(e) => pickCover(e.target.files?.[0] ?? null)}
-            className="text-body text-ink file:mr-3 file:border file:border-control file:bg-surface file:px-3 file:py-2 file:text-body file:text-ink hover:file:bg-raised"
-          />
-          {coverProblem ? (
-            <p id="cover-error" role="alert" className="text-small text-error">
-              {coverProblem.message}
-            </p>
-          ) : null}
-        </div>
-      </fieldset>
-
-      {progress ? (
-        <div className="grid gap-2">
-          <p className="text-small text-muted" aria-live="polite">
-            {PHASE_LABEL[progress.phase]} {progress.phase === "uploading" ? `${progress.percent}%` : ""}
+      {blocked ? (
+        <div className="grid justify-items-start gap-3">
+          <p className="text-body text-muted">
+            {quotaFull ? "Hapus salah satu lagu di Library untuk membebaskan slot, lalu unggah lagi." : "Library-mu tetap bisa dibuka dan diputar."}
           </p>
-          <div
-            role="progressbar"
-            aria-label="Kemajuan unggahan"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={progress.percent}
-            className="h-2 w-full bg-control"
-          >
-            <div className="h-full origin-left bg-accent" style={{ transform: `scaleX(${progress.percent / 100})` }} />
-          </div>
+          <ButtonLink href="/library" size="lg">
+            Buka Library
+          </ButtonLink>
         </div>
-      ) : null}
+      ) : (
+        <>
+          <StatusMessage kind="warning" title="Perlu diketahui">
+            Lagu pribadi terhapus otomatis setelah {TTL_HOURS} jam. Unggah hanya musik yang kamu punya haknya.
+          </StatusMessage>
 
-      {failure ? (
-        <StatusMessage kind="error" title="Unggahan gagal">
-          <span data-testid="upload-error" data-code={failure.code}>
-            {failure.message}
-          </span>
-          {failure.detail ? <span className="mt-1 block text-caption text-muted">Kode teknis: {failure.detail}</span> : null}
-        </StatusMessage>
-      ) : null}
+          <fieldset disabled={working} className="grid gap-5 disabled:opacity-60">
+            <legend className="sr-only">Data lagu</legend>
+            <FileField
+              id="audio"
+              title="Berkas MP3 (maks 10 MB)"
+              pickLabel="Pilih berkas MP3"
+              changeLabel="Ganti berkas MP3"
+              accept=".mp3,audio/mpeg"
+              file={file}
+              onChange={pickFile}
+              error={fileProblem?.message}
+              disabled={working}
+            />
+            <TextField label="Judul" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} required autoComplete="off" />
+            <TextField label="Artis" value={artist} onChange={(e) => setArtist(e.target.value)} maxLength={120} required autoComplete="off" />
+            <TextField label="Album (opsional)" value={album} onChange={(e) => setAlbum(e.target.value)} maxLength={120} autoComplete="off" />
+            <FileField
+              id="cover"
+              title="Sampul (opsional; JPG, PNG, atau WebP, maks 2 MB)"
+              pickLabel="Pilih sampul"
+              changeLabel="Ganti sampul"
+              accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+              file={cover}
+              onChange={pickCover}
+              emptyText="Tanpa sampul"
+              error={coverProblem?.message}
+              disabled={working}
+            />
+          </fieldset>
 
-      <div>
-        <Button type="submit" size="lg" disabled={blocked || working || !file || Boolean(fileProblem) || Boolean(coverProblem)}>
-          {working ? "Mengunggah…" : "Unggah"}
-        </Button>
-      </div>
+          {progress ? (
+            <div className="grid gap-2">
+              <p className="text-small text-muted" aria-live="polite">
+                {PHASE_LABEL[progress.phase]} {progress.phase === "uploading" ? `${progress.percent}%` : ""}
+              </p>
+              <div
+                role="progressbar"
+                aria-label="Kemajuan unggahan"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={progress.percent}
+                className="h-2 w-full bg-control"
+              >
+                <div className="h-full origin-left bg-accent" style={{ transform: `scaleX(${progress.percent / 100})` }} />
+              </div>
+            </div>
+          ) : null}
+
+          <div>
+            <Button type="submit" size="lg" disabled={working || !file || Boolean(fileProblem) || Boolean(coverProblem)}>
+              {working ? "Mengunggah…" : "Unggah"}
+            </Button>
+          </div>
+        </>
+      )}
     </form>
   );
 }
