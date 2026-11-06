@@ -107,7 +107,7 @@ jobs:
           node supabase/tests/api/seed.test.mjs
 
       # Spike S1 (Range 206 pada signed URL) dan S2 (TUS lolos policy owns_pending_object; path lain ditolak).
-      - name: Spike S1 dan S2 (Storage: Range dan TUS)
+      - name: "Spike S1 dan S2 (Storage, Range dan TUS)"
         run: |
           eval "$(supabase status -o env | sed 's/^/export /')"
           export SUPABASE_URL="$API_URL"
