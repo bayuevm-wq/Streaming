@@ -23,14 +23,14 @@ for (const vp of [
 
     await page.getByRole("region", { name: "Album" }).getByRole("link").first().click();
     await page.waitForURL((u) => /^\/album\//.test(u.pathname));
-    await expect(page.locator("main h1")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await page.waitForTimeout(800);
     await page.screenshot({ path: `${OUT}/${vp.name}-album.png` });
     expect(await noHScroll(), "album: scroll horizontal").toBe(true);
 
     await page.locator("main header a[href^='/artis/']").first().click();
     await page.waitForURL((u) => /^\/artis\//.test(u.pathname));
-    await expect(page.locator("main h1")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await page.waitForTimeout(800);
     await page.screenshot({ path: `${OUT}/${vp.name}-artis.png` });
     expect(await noHScroll(), "artis: scroll horizontal").toBe(true);

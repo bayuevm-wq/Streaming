@@ -123,8 +123,9 @@ test("slider posisi: Tab + panah kanan memajukan audio sungguhan", async ({ page
 
 test("ID tidak valid: 404 rapi di dalam kerangka aplikasi", async ({ page }) => {
   await signInAnonymously(page);
-  const res = await page.goto("/album/bukan-uuid");
-  expect(res?.status()).toBe(404);
+  // Catatan: status HTTP-nya 200, bukan 404. Halaman di-stream di balik Suspense (loading.tsx), sehingga status sudah
+  // terkirim sebelum notFound() dijalankan. Yang dijamin spec F4 adalah halaman 404 yang rapi (tampilan), bukan kode status.
+  await page.goto("/album/bukan-uuid");
   await expect(page.getByRole("heading", { name: "Halaman tidak ditemukan" })).toBeVisible();
   // tetap di dalam kerangka: sidebar dan pencarian ada
   await expect(page.getByRole("navigation", { name: "Utama" }).first()).toBeVisible();
