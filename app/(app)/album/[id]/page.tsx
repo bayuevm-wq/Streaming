@@ -6,6 +6,7 @@ import { TrackList } from "@/components/media/track-list";
 import { Cover } from "@/components/ui/cover";
 import { EmptyState } from "@/components/ui/empty-state";
 import { IconMusic } from "@/components/ui/icons";
+import { CreditList } from "@/components/media/credit-list";
 import { getAlbum } from "@/lib/data/catalog";
 import { formatTotalDuration } from "@/lib/format";
 
@@ -15,7 +16,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const { id } = await params;
   const data = await getAlbum(id);
   if (!data) notFound();
-  const { album, tracks } = data;
+  const { album, tracks, credits } = data;
   const total = formatTotalDuration(tracks.reduce((n, t) => n + t.durationSec, 0));
 
   return (
@@ -43,6 +44,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       ) : (
         <EmptyState icon={<IconMusic />} title="Album ini belum punya lagu" description="Lagu akan muncul di sini setelah ditambahkan ke katalog." />
       )}
+      <CreditList items={credits} />
     </div>
   );
 }

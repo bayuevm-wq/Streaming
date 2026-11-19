@@ -53,6 +53,10 @@ for (const vp of [
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await scan(page, at("artis"), found);
 
+    await page.goto("/kredit");
+    await expect(page.getByRole("heading", { level: 1, name: "Kredit" })).toBeVisible();
+    await scan(page, at("kredit"), found);
+
     await page.goto("/cari?q=Lagu");
     await expect(page.getByRole("button", { name: /^Sukai e2e Lagu/ }).first()).toBeVisible();
     await waitHydrated(page);

@@ -49,6 +49,12 @@ for (const r of rows1) {
   assert.ok(r.artist_id && r.audio_path.startsWith("seed/") && r.duration_sec >= 1 && r.size_bytes > 4096);
 }
 pass("seed pertama: 3 lagu publik berstatus ready dengan durasi dan ukuran terisi");
+for (const r of rows1) {
+  assert.equal(r.license, "CC0 1.0");
+  assert.ok(r.source_url.startsWith("https://example.com/berkas-uji-sintetis/"), r.source_url);
+  assert.ok(r.credit.includes(r.title), `credit harus menyebut judul: ${r.credit}`);
+}
+pass("seed menyimpan license, source_url, dan credit tiap lagu");
 
 // ---- berkas di bucket publik dapat dibaca lewat URL publik -----------------------------------------
 {
@@ -83,6 +89,11 @@ pass("seed kedua idempoten: tanpa duplikat, id tetap, tanpa unggah ulang");
   assert.equal(read.data.length, 3, "pengunjung anonim harus bisa membaca katalog");
   const upd = await c.from("songs").update({ title: "diubah" }).in("seed_key", keys);
   assert.ok(upd.error, "pengunjung tak boleh mengubah katalog");
+  const readCredit = await c.from("songs").select("license,source_url,credit").in("seed_key", keys);
+  assert.equal(readCredit.error, null, readCredit.error?.message);
+  assert.ok(readCredit.data.every((r) => r.license === "CC0 1.0" && r.source_url && r.credit), "pengunjung harus bisa membaca lisensi, sumber, dan kredit");
+  const updCredit = await c.from("songs").update({ credit: "palsu" }).in("seed_key", keys);
+  assert.ok(updCredit.error, "pengunjung tak boleh mengubah kredit");
   const ins = await c.from("artists").insert({ name: "Palsu" });
   assert.ok(ins.error, "pengunjung tak boleh menambah artis");
   const up = await c.storage.from("audio").upload(`seed/${prefix}-hack.mp3`, new Uint8Array([1, 2, 3]), { contentType: "audio/mpeg" });

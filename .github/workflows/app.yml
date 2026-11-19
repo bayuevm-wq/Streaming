@@ -76,3 +76,5 @@ jobs:
         run: npm run test:uploads
       - name: Uji unit pemeriksaan Origin (CSRF)
         run: npm run test:origin
+      - name: Uji unit kredit lagu (tautan lisensi, pengelompokan)
+        run: npm run test:credits

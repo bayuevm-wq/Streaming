@@ -1,6 +1,8 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { privateCoverUrls } from "./private-covers";
+import { CREDIT_COLUMNS, toCredit } from "./credits";
+import type { CreditItem } from "@/lib/credits";
 import { publicStorageUrl } from "@/lib/storage-url";
 import type { Track } from "@/lib/player/store";
 
@@ -97,7 +99,7 @@ export async function getAlbum(id: string) {
     db.from("albums").select(ALBUM_SELECT).eq("id", id).maybeSingle(),
     db
       .from("songs")
-      .select(SONG_SELECT)
+      .select(`${SONG_SELECT},${CREDIT_COLUMNS}`)
       .eq("album_id", id)
       .eq("visibility", "public")
       .order("track_no", { ascending: true, nullsFirst: false })
@@ -108,7 +110,9 @@ export async function getAlbum(id: string) {
   if (error) throw new Error(`Gagal memuat album: ${error.message}`);
   if (!album) return null;
   if (sErr) throw new Error(`Gagal memuat lagu album: ${sErr.message}`);
-  return { album: toAlbum(album as unknown as AlbumRow), tracks: (songs as unknown as SongRow[]).map((s) => toTrack(s)) };
+  const rows = songs as unknown as (SongRow & { license: string | null; source_url: string | null; credit: string | null })[];
+  const credits = rows.map((r) => toCredit({ id: r.id, title: r.title, license: r.license, source_url: r.source_url, credit: r.credit, artist: r.artist, album: r.album })).filter((c): c is CreditItem => c !== null);
+  return { album: toAlbum(album as unknown as AlbumRow), tracks: rows.map((s) => toTrack(s)), credits };
 }
 
 export async function getArtist(id: string) {
