@@ -15,8 +15,10 @@ alter table public.songs
 alter table public.songs
   add constraint songs_credit_shape check (
     (license is null and source_url is null and credit is null)
+    -- IS NOT NULL eksplisit: CHECK meloloskan hasil NULL, jadi tanpa ini baris setengah terisi (mis. lisensi tanpa kredit) lolos.
     or (
       visibility = 'public'
+      and license is not null and source_url is not null and credit is not null
       and license in ('CC0 1.0', 'CC BY 4.0', 'CC BY-SA 4.0')
       and source_url ~ '^https?://'
       and char_length(source_url) <= 500

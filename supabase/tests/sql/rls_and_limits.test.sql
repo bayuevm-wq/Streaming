@@ -366,3 +366,9 @@ select t.err('T21i klien tidak bisa mengubah lisensi',
 select t.err('T21j klien tidak bisa mengubah kredit',
   $$update public.songs set credit = 'palsu' where title = 'Berkredit CC BY'$$, 'permission denied');
 select t.logout();
+select t.err('T21k sumber tanpa lisensi dan kredit ditolak (baris setengah terisi)',
+  $$insert into public.songs (visibility, title, artist_id, audio_path, duration_sec, source_url)
+    select 'public', 'HanyaSumber', id, 'seed/hs.mp3', 10, 'https://x.example/a' from public.artists limit 1$$, 'songs_credit_shape');
+select t.err('T21l kredit tanpa lisensi dan sumber ditolak (baris setengah terisi)',
+  $$insert into public.songs (visibility, title, artist_id, audio_path, duration_sec, credit)
+    select 'public', 'HanyaKredit', id, 'seed/hk.mp3', 10, 'x' from public.artists limit 1$$, 'songs_credit_shape');

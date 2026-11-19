@@ -1,0 +1,107 @@
+name: screenshots-katalog
+
+# Tangkapan layar dengan katalog ASLI (metadata, kredit, sampul, durasi dari scripts/seed/catalog.json), dijalankan manual.
+# Mesin pengembang tidak punya Docker, jadi Supabase lokal dijalankan di sini. Audio asli TIDAK ada di repo (dan tidak boleh
+# masuk git): dipakai audio pengganti sunyi berdurasi sama; yang tampak di gambar hanya metadata, kredit, sampul, dan durasi.
+# Sampul dibuat dari skrip (make-covers.mjs), sama dengan yang dipakai saat seed produksi.
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: "Simpan hasilnya ke docs/images/fase5 dan commit"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: screenshots-katalog-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shots:
+    name: Tangkapan layar katalog asli
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_AUTH_CAPTCHA_SECRET: 1x0000000000000000000000000000000AA
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000BB
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 3.0.0
+
+      - name: supabase start dan db reset
+        run: |
+          supabase start -x realtime,imgproxy,mailpit,studio,edge-runtime,logflare,vector,supavisor,postgres-meta
+          supabase db reset
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Variabel lingkungan dari Supabase lokal
+        run: |
+          eval "$(supabase status -o env | sed 's/^/export /')"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY:-${PUBLISHABLE_KEY:-}}"
+            echo "SUPABASE_URL=$API_URL"
+            echo "SUPABASE_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY:-${SECRET_KEY:-}}"
+          } >> "$GITHUB_ENV"
+
+      - name: Sampul sendiri dan audio pengganti
+        timeout-minutes: 5
+        run: |
+          node scripts/seed/make-covers.mjs
+          node scripts/seed/make-preview-audio.ts
+
+      - name: Seed katalog asli (mode ketat)
+        run: node scripts/seed.ts
+
+      - name: Build dan jalankan aplikasi
+        run: |
+          npm run build
+          nohup npx next start -p 3000 > next.log 2>&1 &
+          curl -fsS --retry 40 --retry-connrefused --retry-delay 1 -o /dev/null http://127.0.0.1:3000/masuk
+
+      - name: Tangkapan layar
+        timeout-minutes: 10
+        run: npx playwright test -c playwright.preview.config.ts
+
+      - name: Simpan ke docs/images/fase5
+        if: inputs.commit
+        run: |
+          mkdir -p docs/images/fase5
+          cp test-results/shots/fase5/*.png docs/images/fase5/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/images/fase5
+          if git diff --cached --quiet; then
+            echo "Tidak ada perubahan."
+          else
+            git commit -m "Update screenshots fase5 (katalog asli, manual run)"
+            git push
+          fi
+
+      - name: Unggah hasil
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-katalog
+          path: test-results/
+          if-no-files-found: ignore
+
+      - name: Log aplikasi (bila gagal)
+        if: failure()
+        run: tail -n 80 next.log || true
+
+      - name: supabase stop
+        if: always()
+        run: supabase stop --no-backup
