@@ -27,8 +27,11 @@ export type CatalogSong = {
   trackNo?: number;
   file: string;
   cover?: string;
-  source: string;
+  /** Halaman LAGU di sumbernya (bukan halaman album), tempat lisensi diperiksa. Harus URL http(s). */
+  source_url: string;
   license: string;
+  /** Teks atribusi lengkap yang ditampilkan apa adanya di aplikasi (CC BY dan CC BY-SA mewajibkan atribusi). */
+  credit: string;
 };
 export type Catalog = {
   artists: { name: string; image?: string }[];
@@ -74,7 +77,16 @@ export function catalogProblems(c: Catalog, relaxed: boolean): string[] {
     if (!s.title?.trim()) p.push(`${where}: judul kosong`);
     if (!artists.has(norm(s.artist ?? ""))) p.push(`${where}: artis "${s.artist}" tidak ada di daftar artis`);
     if (s.album && !albums.has(albumKey(s.artist, s.album))) p.push(`${where}: album "${s.album}" tidak ada untuk artis itu`);
-    if (!s.source?.trim()) p.push(`${where}: source wajib (URL atau keterangan asal)`);
+    if (!s.source_url?.trim()) p.push(`${where}: source_url wajib (halaman lagu di sumbernya)`);
+    else if (!/^https?:\/\/\S+$/.test(s.source_url.trim())) p.push(`${where}: source_url harus berupa URL http(s)`);
+    else if (s.source_url.trim().length > 500) p.push(`${where}: source_url terlalu panjang (maks 500)`);
+    if (!s.credit?.trim()) p.push(`${where}: credit wajib (teks atribusi)`);
+    else {
+      const c = s.credit.toLowerCase();
+      if (s.credit.trim().length > 600) p.push(`${where}: credit terlalu panjang (maks 600)`);
+      if (!c.includes(norm(s.title ?? ""))) p.push(`${where}: credit harus menyebut judul lagu`);
+      if (!c.includes(norm(s.artist ?? ""))) p.push(`${where}: credit harus menyebut nama artis`);
+    }
     if (!s.license?.trim()) p.push(`${where}: license wajib`);
     else {
       const lp = licenseProblem(s.license);

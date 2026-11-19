@@ -53,7 +53,7 @@ jobs:
           err=$(grep -c "ERROR:" test.out || true)
           echo "PASS=$pass FAIL=$fail ERROR=$err"
           # gagal bila ada FAIL atau ERROR, atau bila jumlah PASS menyusut (uji terlewat diam-diam)
-          [ "$fail" = 0 ] && [ "$err" = 0 ] && [ "$pass" -ge 90 ]
+          [ "$fail" = 0 ] && [ "$err" = 0 ] && [ "$pass" -ge 100 ]
 
       - name: Uji konkurensi
         run: bash supabase/tests/concurrency.sh

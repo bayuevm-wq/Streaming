@@ -94,7 +94,12 @@ expectFail("lisensi FMA-Limited ditolak", (s) => { s.catalog.songs[0].license = 
 expectFail("versi CC lama (CC BY 3.0) ditolak", (s) => { s.catalog.songs[0].license = "CC BY 3.0"; }, /tidak diizinkan/);
 expectFail("CC BY-SA 3.0 ditolak", (s) => { s.catalog.songs[0].license = "CC BY-SA 3.0"; }, /tidak diizinkan/);
 expectFail("lisensi tak jelas ditolak", (s) => { s.catalog.songs[0].license = "bebas dipakai"; }, /tidak diizinkan/);
-expectFail("source wajib", (s) => { delete s.catalog.songs[0].source; }, /source wajib/);
+expectFail("source_url wajib", (s) => { delete s.catalog.songs[0].source_url; }, /source_url wajib/);
+expectFail("source_url harus URL http(s)", (s) => { s.catalog.songs[0].source_url = "javascript:alert(1)"; }, /URL http/);
+expectFail("source_url keterangan bebas ditolak", (s) => { s.catalog.songs[0].source_url = "berkas uji"; }, /URL http/);
+expectFail("credit wajib", (s) => { delete s.catalog.songs[0].credit; }, /credit wajib/);
+expectFail("credit harus menyebut judul", (s) => { s.catalog.songs[0].credit = "tanpa judul oleh " + s.catalog.songs[0].artist; }, /menyebut judul/);
+expectFail("credit harus menyebut artis", (s) => { s.catalog.songs[0].credit = "x " + s.catalog.songs[0].title + " oleh seseorang"; }, /menyebut nama artis/);
 expectFail("license wajib", (s) => { delete s.catalog.songs[0].license; }, /license wajib/);
 
 // --- negatif: bentuk katalog -----------------------------------------------------------------------
@@ -124,8 +129,8 @@ expectFail("mode ketat meminta cover", (s) => { delete s.catalog.albums[0].cover
   const r = spawnSync(process.execPath, [path.resolve("scripts/seed.ts"), "--dry-run", "--relaxed", "--readme", "--catalog", s.file], { encoding: "utf8", cwd });
   assert.equal(r.status, 0, r.stderr);
   const out = fs.readFileSync(path.join(cwd, "README.md"), "utf8");
-  assert.match(out, /^# Judul\n\nsebelum\n<!-- seed-sources:start -->\n\| Lagu \| Artis \| Sumber \| Lisensi \|/);
-  assert.match(out, /\| t Lagu 1 \| t Artis A \| berkas uji sintetis \(bukan musik\) \| CC0 1\.0 \|/);
+  assert.match(out, /^# Judul\n\nsebelum\n<!-- seed-sources:start -->\n\| Lagu \| Artis \| Album \| Lisensi \| Sumber \|/);
+  assert.match(out, /\| t Lagu 1 \| t Artis A \| t Album Satu \| CC0 1\.0 \| \[halaman lagu\]\(https:\/\/example\.com\/berkas-uji-sintetis\/t-1\) \|/);
   assert.match(out, /<!-- seed-sources:end -->\nsesudah\n$/);
   assert.doesNotMatch(out, /lama/);
   pass("--readme menulis tabel sumber/lisensi hanya di antara penanda");

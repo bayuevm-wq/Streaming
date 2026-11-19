@@ -121,8 +121,8 @@ function updateReadme(catalog: Catalog) {
   const j = text.indexOf(end);
   if (i < 0 || j < i) die([`penanda ${start} ... ${end} tidak ada di ${file}`]);
   const esc = (s: string) => s.replace(/\|/g, "\\|");
-  const rows = catalog.songs.map((s) => `| ${esc(s.title)} | ${esc(s.artist)} | ${esc(s.source)} | ${esc(s.license)} |`);
-  const table = ["| Lagu | Artis | Sumber | Lisensi |", "|---|---|---|---|", ...rows].join("\n");
+  const rows = catalog.songs.map((s) => `| ${esc(s.title)} | ${esc(s.artist)} | ${esc(s.album ?? "")} | ${esc(s.license)} | [halaman lagu](${s.source_url.trim()}) |`);
+  const table = ["| Lagu | Artis | Album | Lisensi | Sumber |", "|---|---|---|---|---|", ...rows].join("\n");
   fs.writeFileSync(file, `${text.slice(0, i + start.length)}\n${table}\n${text.slice(j)}`);
   console.log(`README.md diperbarui: ${rows.length} lagu`);
 }
@@ -234,6 +234,9 @@ async function main() {
       cover_path: cover,
       duration_sec: a.duration,
       size_bytes: a.size,
+      license: s.license.trim(),
+      source_url: s.source_url.trim(),
+      credit: s.credit.trim(),
     };
     const { data: existing, error: selErr } = await db.from("songs").select("id").eq("seed_key", s.key).maybeSingle();
     if (selErr) throw selErr;

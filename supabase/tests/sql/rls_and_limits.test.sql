@@ -329,3 +329,40 @@ select t.check('T20b playlists.user_id terisi dari JWT tanpa dikirim klien',
 select t.err('T20c user_id palsu tetap ditolak RLS walau ada default',
   format($f$insert into public.likes (user_id, song_id) select %L, id from public.songs where title = 'Bulk 2'$f$, :A::text), 'row-level security');
 select t.logout();
+
+\echo == T21 lisensi dan kredit lagu katalog (0007) ==
+select t.as_service();
+insert into public.songs (visibility, title, artist_id, audio_path, duration_sec, license, source_url, credit)
+  select 'public', 'Berkredit CC BY', id, 'seed/kredit1.mp3', 100, 'CC BY 4.0', 'https://freemusicarchive.org/music/x/y/z/', '"Z" oleh X (CC BY 4.0)' from public.artists limit 1;
+insert into public.songs (visibility, title, artist_id, audio_path, duration_sec, license, source_url, credit)
+  select 'public', 'Berkredit CC0', id, 'seed/kredit2.mp3', 100, 'CC0 1.0', 'https://freemusicarchive.org/music/x/y/c0/', '"C0" oleh X (CC0 1.0)' from public.artists limit 1;
+insert into public.songs (visibility, title, artist_id, audio_path, duration_sec, license, source_url, credit)
+  select 'public', 'Berkredit BY-SA', id, 'seed/kredit3.mp3', 100, 'CC BY-SA 4.0', 'https://freemusicarchive.org/music/x/y/sa/', '"SA" oleh X (CC BY-SA 4.0)' from public.artists limit 1;
+select t.logout();
+select t.check('T21a tiga lisensi yang diizinkan diterima', (select count(*) from public.songs where title like 'Berkredit %') = 3);
+select t.err('T21b lisensi NC ditolak database',
+  $$insert into public.songs (visibility, title, artist_id, audio_path, duration_sec, license, source_url, credit)
+    select 'public', 'NC', id, 'seed/nc.mp3', 10, 'CC BY-NC 4.0', 'https://x.example/a', 'x' from public.artists limit 1$$, 'songs_credit_shape');
+select t.err('T21c lisensi ND ditolak database',
+  $$insert into public.songs (visibility, title, artist_id, audio_path, duration_sec, license, source_url, credit)
+    select 'public', 'ND', id, 'seed/nd.mp3', 10, 'CC BY-ND 4.0', 'https://x.example/a', 'x' from public.artists limit 1$$, 'songs_credit_shape');
+select t.err('T21d versi CC lama (CC BY 3.0) ditolak database',
+  $$insert into public.songs (visibility, title, artist_id, audio_path, duration_sec, license, source_url, credit)
+    select 'public', 'V3', id, 'seed/v3.mp3', 10, 'CC BY 3.0', 'https://x.example/a', 'x' from public.artists limit 1$$, 'songs_credit_shape');
+select t.err('T21e lisensi tanpa kredit ditolak (semua atau tidak sama sekali)',
+  $$insert into public.songs (visibility, title, artist_id, audio_path, duration_sec, license, source_url)
+    select 'public', 'TanpaKredit', id, 'seed/nk.mp3', 10, 'CC BY 4.0', 'https://x.example/a' from public.artists limit 1$$, 'songs_credit_shape');
+select t.err('T21f sumber bukan URL http(s) ditolak',
+  $$insert into public.songs (visibility, title, artist_id, audio_path, duration_sec, license, source_url, credit)
+    select 'public', 'SumberAneh', id, 'seed/sa.mp3', 10, 'CC0 1.0', 'javascript:alert(1)', 'x' from public.artists limit 1$$, 'songs_credit_shape');
+select t.err('T21g lagu pribadi tidak boleh punya lisensi/kredit',
+  format($f$insert into public.songs (visibility, status, owner_id, title, artist_name, audio_path, expires_at, license, source_url, credit)
+            values ('private', 'pending', %L, 'Pribadi Berkredit', 'x', 'priv/kredit.mp3', now() + interval '1 hour', 'CC0 1.0', 'https://x.example/a', 'x')$f$, :E::text), 'songs_credit_shape');
+select t.login(:B);
+select t.check('T21h pengunjung membaca lisensi, sumber, dan kredit lagu publik',
+  (select count(*) from public.songs where title = 'Berkredit CC BY' and license = 'CC BY 4.0' and source_url like 'https://%' and credit is not null) = 1);
+select t.err('T21i klien tidak bisa mengubah lisensi',
+  $$update public.songs set license = 'CC0 1.0' where title = 'Berkredit CC BY'$$, 'permission denied');
+select t.err('T21j klien tidak bisa mengubah kredit',
+  $$update public.songs set credit = 'palsu' where title = 'Berkredit CC BY'$$, 'permission denied');
+select t.logout();

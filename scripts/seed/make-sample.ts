@@ -34,8 +34,9 @@ export function writeSample(dir: string, prefix = "sample", baseSeconds = 10): s
       album: n < 3 ? `${prefix} Album Satu` : `${prefix} Album Dua`,
       trackNo: n < 3 ? n : 1,
       file: `audio/${prefix}-${n}.mp3`,
-      source: "berkas uji sintetis (bukan musik)",
+      source_url: `https://example.com/berkas-uji-sintetis/${prefix}-${n}`,
       license: "CC0 1.0",
+      credit: `"${prefix} Lagu ${n}" ${n < 3 ? `${prefix} Artis A` : `${prefix} Artis B`} (berkas uji sintetis, bukan musik)`,
     })),
   };
   const file = path.join(dir, "catalog.json");
