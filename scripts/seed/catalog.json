@@ -1,1 +1,231 @@
-{ "artists": [], "albums": [], "songs": [] }
+{
+  "artists": [
+    {
+      "name": "HoliznaCC0",
+      "image": "covers/artist-holiznacc0.jpg"
+    },
+    {
+      "name": "Komiku",
+      "image": "covers/artist-komiku.jpg"
+    },
+    {
+      "name": "Lobo Loco",
+      "image": "covers/artist-lobo-loco.jpg"
+    },
+    {
+      "name": "Kevin MacLeod",
+      "image": "covers/artist-kevin-macleod.jpg"
+    }
+  ],
+  "albums": [
+    {
+      "artist": "HoliznaCC0",
+      "title": "Winter Lofi",
+      "cover": "covers/album-winter-lofi.jpg"
+    },
+    {
+      "artist": "Komiku",
+      "title": "ULTRA PERSON VOL4",
+      "cover": "covers/album-ultra-person-vol4.jpg"
+    },
+    {
+      "artist": "Lobo Loco",
+      "title": "FREE FOR YOU - CC BY",
+      "cover": "covers/album-free-for-you.jpg"
+    },
+    {
+      "artist": "Kevin MacLeod",
+      "title": "Incompetech Selection",
+      "cover": "covers/album-incompetech-selection.jpg"
+    }
+  ],
+  "songs": [
+    {
+      "key": "holizna-2-hour-delay",
+      "title": "2 Hour Delay",
+      "artist": "HoliznaCC0",
+      "album": "Winter Lofi",
+      "trackNo": 1,
+      "file": "audio/holizna-2-hour-delay.mp3",
+      "source_url": "https://freemusicarchive.org/music/holiznacc0/winter-lofi/2-hour-delay-1/",
+      "license": "CC0 1.0",
+      "credit": "“2 Hour Delay” — HoliznaCC0, album “Winter Lofi”. Sumber: Free Music Archive. Lisensi: CC0 1.0 Universal (domain publik)."
+    },
+    {
+      "key": "holizna-winter-blues",
+      "title": "Winter Blues",
+      "artist": "HoliznaCC0",
+      "album": "Winter Lofi",
+      "trackNo": 2,
+      "file": "audio/holizna-winter-blues.mp3",
+      "source_url": "https://freemusicarchive.org/music/holiznacc0/winter-lofi/winter-blues/",
+      "license": "CC0 1.0",
+      "credit": "“Winter Blues” — HoliznaCC0, album “Winter Lofi”. Sumber: Free Music Archive. Lisensi: CC0 1.0 Universal (domain publik)."
+    },
+    {
+      "key": "holizna-first-snow",
+      "title": "First Snow",
+      "artist": "HoliznaCC0",
+      "album": "Winter Lofi",
+      "trackNo": 3,
+      "file": "audio/holizna-first-snow.mp3",
+      "source_url": "https://freemusicarchive.org/music/holiznacc0/winter-lofi/first-snowmp3/",
+      "license": "CC0 1.0",
+      "credit": "“First Snow.mp3” — HoliznaCC0, album “Winter Lofi”. Sumber: Free Music Archive. Lisensi: CC0 1.0 Universal (domain publik)."
+    },
+    {
+      "key": "holizna-snow-drift",
+      "title": "Snow Drift",
+      "artist": "HoliznaCC0",
+      "album": "Winter Lofi",
+      "trackNo": 4,
+      "file": "audio/holizna-snow-drift.mp3",
+      "source_url": "https://freemusicarchive.org/music/holiznacc0/winter-lofi/snow-drift/",
+      "license": "CC0 1.0",
+      "credit": "“Snow Drift” — HoliznaCC0, album “Winter Lofi”. Sumber: Free Music Archive. Lisensi: CC0 1.0 Universal (domain publik)."
+    },
+    {
+      "key": "holizna-fire-place",
+      "title": "Fire Place",
+      "artist": "HoliznaCC0",
+      "album": "Winter Lofi",
+      "trackNo": 5,
+      "file": "audio/holizna-fire-place.mp3",
+      "source_url": "https://freemusicarchive.org/music/holiznacc0/winter-lofi/fire-place/",
+      "license": "CC0 1.0",
+      "credit": "“Fire Place” — HoliznaCC0, album “Winter Lofi”. Sumber: Free Music Archive. Lisensi: CC0 1.0 Universal (domain publik)."
+    },
+    {
+      "key": "komiku-we-need-a-plan",
+      "title": "We need a plan",
+      "artist": "Komiku",
+      "album": "ULTRA PERSON VOL4",
+      "trackNo": 1,
+      "file": "audio/komiku-we-need-a-plan.mp3",
+      "source_url": "https://freemusicarchive.org/music/Komiku/ULTRA_PERSON_VOL4/Komiku_-_ULTRA_PERSON_VOL4_-_02_We_need_a_plan/",
+      "license": "CC0 1.0",
+      "credit": "“We need a plan” — Komiku, album “ULTRA PERSON VOL4”. Sumber: Free Music Archive. Lisensi: CC0 1.0 Universal (domain publik)."
+    },
+    {
+      "key": "komiku-the-night-before-the-fight-of-our-life",
+      "title": "The night before the fight of our life",
+      "artist": "Komiku",
+      "album": "ULTRA PERSON VOL4",
+      "trackNo": 2,
+      "file": "audio/komiku-the-night-before-the-fight-of-our-life.mp3",
+      "source_url": "https://freemusicarchive.org/music/Komiku/ULTRA_PERSON_VOL4/Komiku_-_ULTRA_PERSON_VOL4_-_04_The_night_before_the_fight_of_our_life/",
+      "license": "CC0 1.0",
+      "credit": "“The night before the fight of our life” — Komiku, album “ULTRA PERSON VOL4”. Sumber: Free Music Archive. Lisensi: CC0 1.0 Universal (domain publik)."
+    },
+    {
+      "key": "komiku-the-evil-plan",
+      "title": "The Evil Plan",
+      "artist": "Komiku",
+      "album": "ULTRA PERSON VOL4",
+      "trackNo": 3,
+      "file": "audio/komiku-the-evil-plan.mp3",
+      "source_url": "https://freemusicarchive.org/music/Komiku/ULTRA_PERSON_VOL4/Komiku_-_ULTRA_PERSON_VOL4_-_06_The_Evil_Plan/",
+      "license": "CC0 1.0",
+      "credit": "“The Evil Plan” — Komiku, album “ULTRA PERSON VOL4”. Sumber: Free Music Archive. Lisensi: CC0 1.0 Universal (domain publik)."
+    },
+    {
+      "key": "komiku-the-end",
+      "title": "The end ?",
+      "artist": "Komiku",
+      "album": "ULTRA PERSON VOL4",
+      "trackNo": 4,
+      "file": "audio/komiku-the-end.mp3",
+      "source_url": "https://freemusicarchive.org/music/Komiku/ULTRA_PERSON_VOL4/Komiku_-_ULTRA_PERSON_VOL4_-_08_The_end_-/",
+      "license": "CC0 1.0",
+      "credit": "“The end ?” — Komiku, album “ULTRA PERSON VOL4”. Sumber: Free Music Archive. Lisensi: CC0 1.0 Universal (domain publik)."
+    },
+    {
+      "key": "lobo-loco-powerful-day",
+      "title": "Powerful Day",
+      "artist": "Lobo Loco",
+      "album": "FREE FOR YOU - CC BY",
+      "trackNo": 1,
+      "file": "audio/lobo-loco-powerful-day.mp3",
+      "source_url": "https://freemusicarchive.org/music/Lobo_Loco/free-for-you-cc-by/powerful-day-id-2337/",
+      "license": "CC BY 4.0",
+      "credit": "“Powerful Day (ID 2337)” — Lobo Loco, album “FREE FOR YOU - CC BY”. Sumber: Free Music Archive. Lisensi: Creative Commons Attribution 4.0 International (CC BY 4.0), https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "key": "lobo-loco-beach-and-surf",
+      "title": "Beach and Surf",
+      "artist": "Lobo Loco",
+      "album": "FREE FOR YOU - CC BY",
+      "trackNo": 2,
+      "file": "audio/lobo-loco-beach-and-surf.mp3",
+      "source_url": "https://freemusicarchive.org/music/Lobo_Loco/free-for-you-cc-by/beach-and-surf-id-2361/",
+      "license": "CC BY 4.0",
+      "credit": "“Beach and Surf (ID 2361)” — Lobo Loco, album “FREE FOR YOU - CC BY”. Sumber: Free Music Archive. Lisensi: Creative Commons Attribution 4.0 International (CC BY 4.0), https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "key": "lobo-loco-little-clouds",
+      "title": "Little Clouds",
+      "artist": "Lobo Loco",
+      "album": "FREE FOR YOU - CC BY",
+      "trackNo": 3,
+      "file": "audio/lobo-loco-little-clouds.mp3",
+      "source_url": "https://freemusicarchive.org/music/Lobo_Loco/free-for-you-cc-by/little-clouds-id-2367/",
+      "license": "CC BY-SA 4.0",
+      "credit": "“Little Clouds (ID 2367)” — Lobo Loco, album “FREE FOR YOU - CC BY”. Sumber: Free Music Archive. Lisensi: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0), https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "key": "lobo-loco-roadtrip-to-kansas",
+      "title": "Roadtrip to Kansas",
+      "artist": "Lobo Loco",
+      "album": "FREE FOR YOU - CC BY",
+      "trackNo": 4,
+      "file": "audio/lobo-loco-roadtrip-to-kansas.mp3",
+      "source_url": "https://freemusicarchive.org/music/Lobo_Loco/free-for-you-cc-by/roadtrip-to-kansas-id-2370/",
+      "license": "CC BY-SA 4.0",
+      "credit": "“Roadtrip to Kansas (ID 2370)” — Lobo Loco, album “FREE FOR YOU - CC BY”. Sumber: Free Music Archive. Lisensi: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0), https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "key": "kevin-macleod-carefree",
+      "title": "Carefree",
+      "artist": "Kevin MacLeod",
+      "album": "Incompetech Selection",
+      "trackNo": 1,
+      "file": "audio/kevin-macleod-carefree.mp3",
+      "source_url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1400037",
+      "license": "CC BY 4.0",
+      "credit": "\"Carefree\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "key": "kevin-macleod-local-forecast-elevator",
+      "title": "Local Forecast - Elevator",
+      "artist": "Kevin MacLeod",
+      "album": "Incompetech Selection",
+      "trackNo": 2,
+      "file": "audio/kevin-macleod-local-forecast-elevator.mp3",
+      "source_url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1300012",
+      "license": "CC BY 4.0",
+      "credit": "\"Local Forecast - Elevator\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "key": "kevin-macleod-wallpaper",
+      "title": "Wallpaper",
+      "artist": "Kevin MacLeod",
+      "album": "Incompetech Selection",
+      "trackNo": 3,
+      "file": "audio/kevin-macleod-wallpaper.mp3",
+      "source_url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100843",
+      "license": "CC BY 4.0",
+      "credit": "\"Wallpaper\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "key": "kevin-macleod-sneaky-snitch",
+      "title": "Sneaky Snitch",
+      "artist": "Kevin MacLeod",
+      "album": "Incompetech Selection",
+      "trackNo": 4,
+      "file": "audio/kevin-macleod-sneaky-snitch.mp3",
+      "source_url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100772",
+      "license": "CC BY 4.0",
+      "credit": "\"Sneaky Snitch\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/"
+    }
+  ]
+}

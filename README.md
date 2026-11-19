@@ -128,7 +128,25 @@ Catatan: ini Next.js 16 (`proxy.ts` menggantikan middleware, Cache Components ak
 Setiap lagu seed dicatat sumber dan lisensinya di bawah (dihasilkan `node scripts/seed.ts --dry-run --readme` dari `scripts/seed/catalog.json`). Hanya **CC0 1.0, CC BY 4.0, atau CC BY-SA 4.0** (Free Music Archive dan Incompetech/Kevin MacLeod); NC, ND, dan FMA-Limited tidak dipakai, dan Pixabay dicoret karena melarang distribusi "standalone". Lihat [`scripts/seed/README.md`](scripts/seed/README.md) untuk cara mengisi katalog.
 
 <!-- seed-sources:start -->
-_Katalog belum diisi._
+| Lagu | Artis | Album | Lisensi | Sumber |
+|---|---|---|---|---|
+| 2 Hour Delay | HoliznaCC0 | Winter Lofi | CC0 1.0 | [halaman lagu](https://freemusicarchive.org/music/holiznacc0/winter-lofi/2-hour-delay-1/) |
+| Winter Blues | HoliznaCC0 | Winter Lofi | CC0 1.0 | [halaman lagu](https://freemusicarchive.org/music/holiznacc0/winter-lofi/winter-blues/) |
+| First Snow | HoliznaCC0 | Winter Lofi | CC0 1.0 | [halaman lagu](https://freemusicarchive.org/music/holiznacc0/winter-lofi/first-snowmp3/) |
+| Snow Drift | HoliznaCC0 | Winter Lofi | CC0 1.0 | [halaman lagu](https://freemusicarchive.org/music/holiznacc0/winter-lofi/snow-drift/) |
+| Fire Place | HoliznaCC0 | Winter Lofi | CC0 1.0 | [halaman lagu](https://freemusicarchive.org/music/holiznacc0/winter-lofi/fire-place/) |
+| We need a plan | Komiku | ULTRA PERSON VOL4 | CC0 1.0 | [halaman lagu](https://freemusicarchive.org/music/Komiku/ULTRA_PERSON_VOL4/Komiku_-_ULTRA_PERSON_VOL4_-_02_We_need_a_plan/) |
+| The night before the fight of our life | Komiku | ULTRA PERSON VOL4 | CC0 1.0 | [halaman lagu](https://freemusicarchive.org/music/Komiku/ULTRA_PERSON_VOL4/Komiku_-_ULTRA_PERSON_VOL4_-_04_The_night_before_the_fight_of_our_life/) |
+| The Evil Plan | Komiku | ULTRA PERSON VOL4 | CC0 1.0 | [halaman lagu](https://freemusicarchive.org/music/Komiku/ULTRA_PERSON_VOL4/Komiku_-_ULTRA_PERSON_VOL4_-_06_The_Evil_Plan/) |
+| The end ? | Komiku | ULTRA PERSON VOL4 | CC0 1.0 | [halaman lagu](https://freemusicarchive.org/music/Komiku/ULTRA_PERSON_VOL4/Komiku_-_ULTRA_PERSON_VOL4_-_08_The_end_-/) |
+| Powerful Day | Lobo Loco | FREE FOR YOU - CC BY | CC BY 4.0 | [halaman lagu](https://freemusicarchive.org/music/Lobo_Loco/free-for-you-cc-by/powerful-day-id-2337/) |
+| Beach and Surf | Lobo Loco | FREE FOR YOU - CC BY | CC BY 4.0 | [halaman lagu](https://freemusicarchive.org/music/Lobo_Loco/free-for-you-cc-by/beach-and-surf-id-2361/) |
+| Little Clouds | Lobo Loco | FREE FOR YOU - CC BY | CC BY-SA 4.0 | [halaman lagu](https://freemusicarchive.org/music/Lobo_Loco/free-for-you-cc-by/little-clouds-id-2367/) |
+| Roadtrip to Kansas | Lobo Loco | FREE FOR YOU - CC BY | CC BY-SA 4.0 | [halaman lagu](https://freemusicarchive.org/music/Lobo_Loco/free-for-you-cc-by/roadtrip-to-kansas-id-2370/) |
+| Carefree | Kevin MacLeod | Incompetech Selection | CC BY 4.0 | [halaman lagu](https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1400037) |
+| Local Forecast - Elevator | Kevin MacLeod | Incompetech Selection | CC BY 4.0 | [halaman lagu](https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1300012) |
+| Wallpaper | Kevin MacLeod | Incompetech Selection | CC BY 4.0 | [halaman lagu](https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100843) |
+| Sneaky Snitch | Kevin MacLeod | Incompetech Selection | CC BY 4.0 | [halaman lagu](https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100772) |
 <!-- seed-sources:end -->
 
 ## Keep-alive
