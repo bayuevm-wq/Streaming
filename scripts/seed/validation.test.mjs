@@ -132,7 +132,7 @@ expectFail("mode ketat meminta cover", (s) => { delete s.catalog.albums[0].cover
   assert.match(out, /^# Judul\n\nsebelum\n<!-- seed-sources:start -->\n\| Lagu \| Artis \| Album \| Lisensi \| Sumber \|/);
   assert.match(out, /\| t Lagu 1 \| t Artis A \| t Album Satu \| CC0 1\.0 \| \[halaman lagu\]\(https:\/\/example\.com\/berkas-uji-sintetis\/t-1\) \|/);
   assert.match(out, /<!-- seed-sources:end -->\nsesudah\n$/);
-  assert.doesNotMatch(out, /lama/);
+  assert.doesNotMatch(out, /ISI-USANG/);
   pass("--readme menulis tabel sumber/lisensi hanya di antara penanda");
 }
 console.log("SEMUA LULUS");
