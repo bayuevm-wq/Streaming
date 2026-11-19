@@ -23,6 +23,7 @@ Aplikasi streaming musik berbasis web, dibangun sebagai proyek portofolio: **Nex
 - **Suka** dengan UI optimistis dan rollback bila server gagal; **playlist** (buat, ganti nama, hapus dengan konfirmasi, tambah/hapus lagu, batas 20 playlist dan 200 lagu dengan pesan yang jelas).
 - **Upload lagu pribadi** (MP3 ≤ 10 MB, maks 3 lagu aktif, terhapus otomatis setelah 24 jam): reservasi di database, unggah resumable (TUS) langsung ke Storage, lalu validasi **isi** file di server. Library menampilkan slot `n/3` dan sisa waktu.
 - **Anonim tanpa daftar**: "Coba tanpa daftar" memakai sign-in anonim Supabase yang dilindungi CAPTCHA (Turnstile). Akun anonim yang tidak aktif 7 hari dibersihkan otomatis beserta file-nya.
+- **Kredit lagu**: CC BY dan CC BY-SA mewajibkan atribusi, jadi tiap lagu katalog menampilkan judul, artis, lisensi (tautan ke halaman lagu di sumbernya), dan teks kredit lengkap di halaman album dan di `/kredit` (dari sidebar dan navigasi ponsel). Lisensi yang diterima hanya CC0 1.0, CC BY 4.0, CC BY-SA 4.0, ditegakkan validator seed **dan** constraint database (`0007_credits.sql`).
 - **Mobile**: di layar ≤ 760px sidebar dan player bar digantikan mini-player satu baris, pemutar penuh, dan navigasi bawah (±120px, sebelumnya ±220px).
 - **Design system "Tinta Cetak"**: mode gelap, serif editorial, sudut tajam, fokus kobalt, status selalu ikon + teks ([`docs/design-system.md`](docs/design-system.md), halaman review `/gaya`).
 
@@ -35,6 +36,7 @@ Disimpan per fase; dihasilkan E2E (Chrome) dan diperbarui hanya secara manual ([
 | [Fase 2](docs/images/fase2/README.md) | Beranda, album, artis, antrean, mini-player, pemutar penuh (desktop 1280px dan ponsel 390px) |
 | [Fase 3](docs/images/fase3/README.md) | Pencarian, Lagu Disukai, playlist |
 | [Fase 4](docs/images/fase4/README.md) | Library (slot n/3), unggah: normal, sedang mengunggah, kuota penuh, MP3 palsu ditolak |
+| [Fase 5](docs/images/fase5/README.md) | Katalog asli: beranda, album dengan kredit, /kredit (audio pengganti sunyi di pipeline gambar) |
 
 ## Keputusan yang layak dilihat
 

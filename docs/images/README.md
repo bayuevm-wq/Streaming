@@ -7,6 +7,7 @@ Dihasilkan oleh E2E (Chrome, `e2e/screenshots*.spec.ts`) terhadap **data contoh 
 | [`fase2/`](fase2/README.md) | Beranda, album, artis, antrean, player bar / mini-player, pemutar penuh |
 | [`fase3/`](fase3/README.md) | Pencarian dengan hasil, Lagu Disukai, playlist |
 | [`fase4/`](fase4/README.md) | Library (slot n/3), unggah: normal, sedang mengunggah, kuota penuh, MP3 palsu ditolak |
+| [`fase5/`](fase5/README.md) | Katalog asli: beranda, album dengan kredit, /kredit (workflow terpisah `screenshots-katalog`; audio pengganti sunyi) |
 
 ## Memperbarui
 
