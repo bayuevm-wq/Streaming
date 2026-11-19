@@ -20,7 +20,7 @@ Stack produksi: **Vercel** (Next.js) + **Supabase** (Postgres, Auth, Storage, Ed
 ## 0. Prasyarat
 
 - [ ] Akun: GitHub (sudah), Vercel, Supabase, Cloudflare.
-- [ ] **Isi `scripts/seed/catalog.json` dengan lagu asli** (minimal 15 lagu, 4 album, 4 artis) dari Free Music Archive atau Incompetech/Kevin MacLeod dengan lisensi **hanya CC0 1.0, CC BY 4.0, atau CC BY-SA 4.0** (dicek di halaman lagu; NC, ND, dan FMA-Limited dilarang; Pixabay tidak dipakai karena melarang distribusi "standalone"). Setiap lagu wajib punya `license`, `source_url`, dan `credit`; kreditnya tampil di aplikasi (album/lagu dan `/kredit`). Letakkan berkas di `scripts/seed/audio/` dan `scripts/seed/covers/` (tidak masuk git). Panduan: [`scripts/seed/README.md`](../scripts/seed/README.md). Validasi lokal tanpa jaringan: `npm run seed:check`.
+- [x] **Katalog seed sudah terisi** di `scripts/seed/catalog.json`: 17 lagu, 4 artis, 4 album (HoliznaCC0, Komiku, Lobo Loco, Kevin MacLeod), lisensi hanya CC0 1.0 / CC BY 4.0 / CC BY-SA 4.0 yang dicek per halaman lagu (Kevin MacLeod dicek manual oleh pemilik pada 2026-11-19). Berkas audio **tidak** ada di repo: siapkan di mesinmu sebelum seed produksi (lihat tahap 5).
 - [ ] Setelah valid: `node scripts/seed.ts --dry-run --readme` memperbarui tabel sumber/lisensi di README, lalu commit.
 - [ ] Putuskan nama domain (cukup `*.vercel.app` untuk demo).
 
@@ -89,6 +89,16 @@ Verifikasi (saya bisa bantu membaca hasilnya bila kamu tempel keluarannya, **tan
 
 ## 5. Seed katalog (kamu menjalankan)
 
+Persiapan di mesinmu (audio asli ada di folder di luar repo, mis. `E:musik-seed`; tidak pernah di-commit):
+
+```bash
+node scripts/seed/prepare-audio.mjs --src "E:musik-seed"   # salin/konversi ke MP3 192 kbps di scripts/seed/audio/, periksa validator MP3
+node scripts/seed/make-covers.mjs                            # sampul buatan sendiri di scripts/seed/covers/
+npm run seed:check                                           # harus: OK 17 lagu, 4 album, 4 artis
+```
+
+Jangan menjalankan `scripts/seed/make-preview-audio.ts --force` di mesin ini: itu menimpa audio asli dengan audio sunyi (hanya untuk CI pratinjau).
+
 ```bash
 # .env.local sementara menunjuk produksi (JANGAN commit), atau beri variabel lewat shell:
 node --env-file=.env.production.local scripts/seed.ts --yes
@@ -109,6 +119,7 @@ E2E otomatis **tidak** dijalankan ke produksi: Turnstile asli menolak otomasi. L
 - [ ] Unggah MP3 kecil: muncul di Library dengan sisa waktu; putar; hapus.
 - [ ] Unggah `.exe` yang diganti nama `.mp3`: ditolak dengan pesan jelas.
 - [ ] **Safari iOS asli (iPhone)**: putar lagu katalog, lalu lagu pribadi **pertama kali** dari Library, lalu dari playlist (tanpa pra-ambil). Aturan autoplay iOS lebih ketat daripada WebKit desktop yang diuji di CI ([`architecture.md` §14.1, S4](architecture.md)). Catat hasilnya.
+- [ ] Halaman **Kredit** (sidebar dan tab "Kredit" di ponsel) memuat 17 lagu dengan tautan lisensi yang membuka halaman lagu di sumbernya; halaman album menampilkan bagian Kredit.
 - [ ] Konsol browser tanpa galat pada alur di atas.
 
 ## Gerbang konfirmasi
