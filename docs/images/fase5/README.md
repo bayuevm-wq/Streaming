@@ -7,6 +7,8 @@ Dihasilkan oleh workflow manual [`screenshots-katalog`](../../../.github/workflo
 | Layar | Desktop 1280px | Ponsel 390px |
 |---|---|---|
 | Beranda | [desktop-beranda.png](desktop-beranda.png) | [ponsel-beranda.png](ponsel-beranda.png) |
+| Beranda utuh (Album, Lagu Terbaru, Artis, tautan kredit) | [desktop-beranda-lengkap.png](desktop-beranda-lengkap.png) | [ponsel-beranda-lengkap.png](ponsel-beranda-lengkap.png) |
+| Menu atas terbuka (Kredit dan Keluar; navigasi bawah tinggal 5 tab) | | [ponsel-menu-atas.png](ponsel-menu-atas.png) |
 | Album "FREE FOR YOU - CC BY" (lisensi campuran) | [desktop-album.png](desktop-album.png) | [ponsel-album.png](ponsel-album.png) |
 | Bagian Kredit di halaman album | [desktop-album-kredit.png](desktop-album-kredit.png) | [ponsel-album-kredit.png](ponsel-album-kredit.png) |
 | /kredit | [desktop-kredit.png](desktop-kredit.png) | [ponsel-kredit.png](ponsel-kredit.png) |

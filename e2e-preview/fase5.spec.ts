@@ -24,6 +24,21 @@ for (const vp of [
     await page.screenshot({ path: `${OUT}/${vp.name}-beranda.png` });
     expect(await noHScroll(), "beranda: scroll horizontal").toBe(true);
 
+    // beranda utuh (viewport tinggi): Album, Lagu Terbaru, Artis, dan tautan kredit di dasar
+    await page.setViewportSize({ width: vp.width, height: vp.tall });
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: `${OUT}/${vp.name}-beranda-lengkap.png` });
+    await page.setViewportSize({ width: vp.width, height: vp.height });
+    await page.waitForTimeout(300);
+
+    // ponsel: menu atas terbuka (Kredit dan Keluar), tempat Kredit sekarang
+    if (vp.width <= 760) {
+      await page.getByRole("button", { name: "Menu" }).click();
+      await expect(page.getByRole("navigation", { name: "Menu atas" })).toBeVisible();
+      await page.screenshot({ path: `${OUT}/${vp.name}-menu-atas.png` });
+      await page.keyboard.press("Escape");
+    }
+
     // album dengan lisensi campuran (CC BY dan CC BY-SA)
     await page.getByRole("link", { name: /FREE FOR YOU - CC BY/ }).first().click();
     await page.waitForURL((u) => /^\/album\//.test(u.pathname));
