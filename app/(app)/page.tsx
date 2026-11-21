@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { SongCardGrid } from "@/components/media/song-card-grid";
 import { CARD_GRID, Section } from "@/components/media/section";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -15,7 +16,7 @@ export default async function Page() {
   const empty = songs.length === 0 && albums.length === 0 && artists.length === 0;
 
   return (
-    <div className="grid gap-12 px-6 py-8">
+    <div className="grid gap-12 px-6 py-8 phone:gap-8">
       <h1 className="font-display text-display font-medium italic">Beranda</h1>
       {empty ? (
         <EmptyState
@@ -26,11 +27,6 @@ export default async function Page() {
         />
       ) : (
         <>
-          {songs.length > 0 && (
-            <Section id="lagu-terbaru" title="Lagu Terbaru">
-              <SongCardGrid tracks={songs} />
-            </Section>
-          )}
           {albums.length > 0 && (
             <Section id="album" title="Album">
               <div className={CARD_GRID}>
@@ -47,6 +43,11 @@ export default async function Page() {
               </div>
             </Section>
           )}
+          {songs.length > 0 && (
+            <Section id="lagu-terbaru" title="Lagu Terbaru">
+              <SongCardGrid tracks={songs} />
+            </Section>
+          )}
           {artists.length > 0 && (
             <Section id="artis" title="Artis">
               <div className={CARD_GRID}>
@@ -56,6 +57,13 @@ export default async function Page() {
               </div>
             </Section>
           )}
+          <p className="border-t border-hairline pt-6 text-small text-muted">
+            Semua lagu katalog berlisensi Creative Commons.{" "}
+            <Link href="/kredit" className="text-ink underline underline-offset-2 hover:text-accent">
+              Lihat kredit musik
+            </Link>
+            .
+          </p>
         </>
       )}
     </div>

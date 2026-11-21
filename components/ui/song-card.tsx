@@ -22,17 +22,18 @@ type Props = {
 export function SongCard({ title, artist, cover, href, playing, paused, onTogglePlay }: Props) {
   const showPause = playing && !paused;
   return (
-    <article className="group relative grid gap-3" aria-current={playing ? "true" : undefined}>
+    <article className="group relative grid gap-3 phone:grid-cols-[4rem_minmax(0,1fr)] phone:items-center phone:gap-3" aria-current={playing ? "true" : undefined}>
       <div className="relative">
         {cover}
         {playing ? (
-          <span className="absolute top-0 left-0 inline-flex items-center gap-2 bg-ground px-2.5 py-1.5 text-caption font-semibold text-accent">
+          <span className="absolute top-0 left-0 inline-flex items-center gap-2 bg-ground px-2.5 py-1.5 text-caption font-semibold text-accent phone:gap-0 phone:p-1">
             <span className="eq" data-paused={paused ? "true" : "false"} aria-hidden="true">
               <i />
               <i />
               <i />
             </span>
-            {paused ? "Dijeda" : "Sedang diputar"}
+            {/* ubin ringkas: tulisan disembunyikan secara visual tetapi tetap dibacakan; penanda tampak = batang eq + garis aksen */}
+            <span className="phone:sr-only">{paused ? "Dijeda" : "Sedang diputar"}</span>
           </span>
         ) : null}
         <button
@@ -40,7 +41,7 @@ export function SongCard({ title, artist, cover, href, playing, paused, onToggle
           onClick={onTogglePlay}
           aria-label={`${showPause ? "Jeda" : "Putar"} ${title}`}
           className={cn(
-            "absolute right-0 bottom-0 grid size-10 place-items-center bg-accent text-lead text-on-accent transition-opacity duration-(--duration-base) hover:bg-accent-hover",
+            "absolute right-0 bottom-0 grid size-10 place-items-center bg-accent text-lead text-on-accent transition-opacity duration-(--duration-base) hover:bg-accent-hover phone:size-8",
             "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100",
             playing && "opacity-100",
           )}
@@ -48,8 +49,15 @@ export function SongCard({ title, artist, cover, href, playing, paused, onToggle
           {showPause ? <IconPause /> : <IconPlay />}
         </button>
       </div>
-      <div className={cn("min-w-0 pt-2.5", playing ? "border-t-[3px] border-accent pt-2" : "border-t border-hairline")}>
-        <h3 className={cn("truncate font-display text-title font-medium", playing ? "text-accent" : "text-ink")}>
+      <div
+        className={cn(
+          "min-w-0 pt-2.5",
+          playing ? "border-t-[3px] border-accent pt-2" : "border-t border-hairline",
+          "phone:border-t-0 phone:pt-0",
+          playing && "phone:border-l-[3px] phone:pl-2",
+        )}
+      >
+        <h3 className={cn("truncate font-display text-title font-medium phone:line-clamp-2 phone:text-body phone:leading-tight phone:whitespace-normal", playing ? "text-accent" : "text-ink")}>
           {href ? (
             <Link href={href} className="hover:underline">
               {title}

@@ -11,7 +11,8 @@ export function SongCardGrid({ tracks }: { tracks: Track[] }) {
   const playList = usePlayer((s) => s.playList);
   const toggle = usePlayer((s) => s.toggle);
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-5">
+    // Ponsel: 2 kolom ubin ringkas (sampul 4rem + judul) supaya >= 4 lagu terlihat di layar pertama, di bawah baris Album.
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-5 phone:grid-cols-2 phone:gap-x-3 phone:gap-y-4">
       {tracks.map((t, i) => {
         const current = currentId === t.id && status !== "idle";
         return (
