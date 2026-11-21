@@ -44,6 +44,14 @@ for (const vp of [
     await waitForPlayback(page);
     await scan(page, at("beranda (pemutar aktif)"), found);
 
+    if (vp.width <= 760) {
+      // menu atas (popover) terbuka
+      await page.getByRole("button", { name: "Menu" }).click();
+      await expect(page.getByRole("navigation", { name: "Menu atas" })).toBeVisible();
+      await scan(page, at("menu atas terbuka"), found);
+      await page.keyboard.press("Escape");
+    }
+
     await page.getByRole("region", { name: "Album" }).getByRole("link").first().click();
     await page.waitForURL((u) => /^\/album\//.test(u.pathname));
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

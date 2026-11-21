@@ -1,4 +1,5 @@
-// Membuat katalog contoh untuk uji E2E di CI: 3 lagu (MP3 sunyi sintetis, 90 detik, bukan musik), 2 album, 2 artis.
+// Membuat katalog contoh untuk uji E2E di CI: 6 lagu (MP3 sunyi sintetis, ±90 detik, bukan musik), 2 album, 2 artis.
+// Enam lagu agar uji tata letak beranda ponsel bisa memeriksa ">= 4 lagu terlihat di layar pertama".
 //   node scripts/seed/make-e2e-catalog.ts <folder>   lalu   node scripts/seed.ts --relaxed --catalog <folder>/catalog.json
 // Sementara dipakai sampai katalog asli (scripts/seed/catalog.json) diisi.
 import { writeSample } from "./make-sample.ts";
@@ -8,4 +9,4 @@ if (!dir) {
   console.error("pakai: node scripts/seed/make-e2e-catalog.ts <folder>");
   process.exit(1);
 }
-console.log(writeSample(dir, "e2e", 89)); // 89 + n detik => 90, 91, 92
+console.log(writeSample(dir, "e2e", 89, 6)); // 89 + n detik => 90 ... 95

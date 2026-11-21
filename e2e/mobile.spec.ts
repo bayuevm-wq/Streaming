@@ -17,6 +17,7 @@ test("ponsel: mini-player + navigasi bawah < 130px, audio tetap berjalan, pemuta
   await expect(nav).toBeVisible();
   await expect(page.getByRole("complementary", { name: "Navigasi samping" })).toBeHidden(); // sidebar hilang
 
+  await expect(nav.getByRole("link"), "navigasi bawah maksimal 5 tab").toHaveCount(5);
   const [mb, nb] = await Promise.all([mini.boundingBox(), nav.boundingBox()]);
   const used = (mb?.height ?? 999) + (nb?.height ?? 999);
   expect(used, `mini-player ${mb?.height} + navigasi bawah ${nb?.height} px`).toBeLessThan(130);

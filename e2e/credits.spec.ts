@@ -18,10 +18,10 @@ test("/kredit: dapat dibuka dari sidebar, memuat kredit tiap lagu dengan tautan 
 
   // tiap lagu: teks kredit lengkap + tautan lisensi menuju halaman lagu di sumbernya
   const credits = page.getByTestId("credit-text");
-  await expect(credits).toHaveCount(3);
+  await expect(credits).toHaveCount(6);
   await expect(credits.first()).toContainText("e2e Lagu");
   const links = page.getByRole("link", { name: /^CC0 1\.0, halaman sumber lagu e2e Lagu/ });
-  await expect(links).toHaveCount(3);
+  await expect(links).toHaveCount(6);
   for (const l of await links.all()) {
     await expect(l).toHaveAttribute("href", /^https:\/\/example\.com\/berkas-uji-sintetis\/e2e-\d$/);
     await expect(l).toHaveAttribute("target", "_blank");
@@ -46,18 +46,44 @@ test("halaman album menampilkan kredit lagunya dan menaut ke /kredit", async ({ 
   await expect(page.getByRole("heading", { level: 1, name: "Kredit" })).toBeVisible();
 });
 
-test("ponsel: Kredit ada di navigasi bawah (target sentuh >= 56px) dan halamannya tanpa scroll horizontal", async ({ page }) => {
+test("ponsel: navigasi bawah maksimal 5 tab tanpa Kredit; Kredit ada di menu atas (Esc menutup, fokus kembali)", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await signInAnonymously(page);
+  await waitHydrated(page);
   const nav = page.getByRole("navigation", { name: "Utama" });
-  const link = nav.getByRole("link", { name: "Kredit" });
-  await expect(link).toBeVisible();
-  expect((await link.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(56);
-  await link.click();
+  const links = nav.getByRole("link");
+  await expect(links).toHaveCount(5);
+  await expect(links).toHaveText(["Beranda", "Cari", "Library", "Playlist", "Disukai"]);
+  await expect(nav.getByRole("link", { name: "Kredit" })).toHaveCount(0);
+  for (const l of await links.all()) expect((await l.boundingBox())?.height ?? 0, "target sentuh navigasi bawah >= 56px").toBeGreaterThanOrEqual(56);
+
+  // menu atas: tombol Menu membuka popover berisi Kredit dan Keluar
+  const menuButton = page.getByRole("button", { name: "Menu" });
+  expect((await menuButton.boundingBox())?.width ?? 0, "target sentuh tombol Menu >= 44px").toBeGreaterThanOrEqual(44);
+  const menu = page.getByRole("navigation", { name: "Menu atas" });
+  await expect(menu).toBeHidden();
+  await menuButton.click();
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole("link", { name: "Kredit" })).toBeVisible();
+  await expect(menu.getByRole("button", { name: "Keluar" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+  await expect(menuButton).toBeFocused(); // fokus kembali ke pemicu
+
+  // Kredit lewat menu atas: popover menutup, halaman terbuka, tanpa scroll horizontal
+  await menuButton.click();
+  await menu.getByRole("link", { name: "Kredit" }).click();
+  await expect(page).toHaveURL((u) => u.pathname === "/kredit");
   await expect(page.getByRole("heading", { level: 1, name: "Kredit" })).toBeVisible();
-  await expect(link).toHaveAttribute("aria-current", "page");
-  const noHScroll = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
-  expect(noHScroll, "scroll horizontal di /kredit").toBe(true);
-  // semua tautan sumber tetap bisa disentuh: nama panjang tidak memaksa lebar halaman
+  await expect(menu).toBeHidden();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "scroll horizontal di /kredit").toBe(true);
   await expect(page.getByTestId("credit-text").first()).toBeVisible();
+
+  // Keluar lewat menu atas: dialog konfirmasi tampil (di luar popover) dan Batal menutupnya
+  await menuButton.click();
+  await menu.getByRole("button", { name: "Keluar" }).click();
+  const dialog = page.getByRole("dialog", { name: "Keluar dari mode tamu?" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Batal" }).click();
+  await expect(dialog).toBeHidden();
 });
