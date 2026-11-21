@@ -1,5 +1,5 @@
 import { Suspense, type ReactNode } from "react";
-import { SignOutButton } from "@/components/auth/sign-out-button";
+import { HeaderActions } from "./header-actions";
 import { SearchForm, SearchHeader } from "@/components/ui/search-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AppBottomNav } from "./bottom-nav";
@@ -33,7 +33,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <SearchBox />
             </Suspense>
           }
-          actions={<SignOutButton />}
+          actions={<HeaderActions />}
         />
         <main className="min-w-0 flex-1">{children}</main>
       </div>

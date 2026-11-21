@@ -8,9 +8,9 @@ import { Dialog } from "@/components/ui/dialog";
 import { usePlayer } from "@/lib/player/store";
 
 // Akun anonim tidak bisa dipulihkan, jadi keluar memerlukan konfirmasi (F1).
-export function SignOutButton() {
+// Dialog dipisah dari tombol agar bisa dipasang DI LUAR menu popover (dialog di dalam popover yang tertutup tidak akan tampil).
+export function SignOutDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function confirmSignOut() {
@@ -22,18 +22,14 @@ export function SignOutButton() {
   }
 
   return (
-    <>
-      <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
-        Keluar
-      </Button>
-      <Dialog
+    <Dialog
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={onClose}
         title="Keluar dari mode tamu?"
         description="Like, playlist, dan lagu pribadi akan hilang."
         actions={
           <>
-            <Button variant="secondary" onClick={() => setOpen(false)} disabled={busy}>
+            <Button variant="secondary" onClick={onClose} disabled={busy}>
               Batal
             </Button>
             <Button variant="danger" onClick={confirmSignOut} loading={busy}>
@@ -42,6 +38,18 @@ export function SignOutButton() {
           </>
         }
       />
+  );
+}
+
+/** Tombol Keluar (desktop) beserta dialog konfirmasinya. */
+export function SignOutButton() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
+        Keluar
+      </Button>
+      <SignOutDialog open={open} onClose={() => setOpen(false)} />
     </>
   );
 }

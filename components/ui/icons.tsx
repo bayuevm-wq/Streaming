@@ -133,6 +133,13 @@ export const IconError = (p: IconProps) => (
   </Svg>
 );
 
+/** Menu: tiga garis (untuk menu atas di ponsel). */
+export const IconMenu = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 7h16M4 12h16M4 17h16" />
+  </Svg>
+);
+
 /** Simbol hak cipta: lingkaran dengan huruf C (untuk halaman Kredit). */
 export const IconCredit = (p: IconProps) => (
   <Svg {...p}>
@@ -154,6 +161,7 @@ export const ICONS = {
   library: IconLibrary,
   playlist: IconPlaylist,
   credit: IconCredit,
+  menu: IconMenu,
   plus: IconPlus,
   close: IconClose,
   music: IconMusic,
