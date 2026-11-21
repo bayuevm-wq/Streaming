@@ -6,7 +6,7 @@
 
 Aplikasi streaming musik berbasis web, dibangun sebagai proyek portofolio: **Next.js 16 (App Router) + Tailwind v4 + Supabase**. Pemutarnya tidak pernah putus saat pindah halaman, pengunjung bisa mencoba tanpa mendaftar, dan setiap batas (kuota, ukuran, kepemilikan data) ditegakkan di database, bukan di antarmuka.
 
-> **Demo:** _belum ter-deploy._ Langkah deploy ada di [`docs/deploy.md`](docs/deploy.md). Tautan akan ditambahkan di sini setelah produksi berjalan.
+> **Demo:** <https://streaming-neon-delta.vercel.app/> (Vercel + Supabase, dideploy 2026-11-21). Uji asap manual di desktop lolos: masuk anonim, putar lagu katalog, unggah, Kredit, konsol bersih. Yang belum terbukti ada di [Batasan yang diakui](#batasan-yang-diakui). Langkah deploy dan temuannya ada di [`docs/deploy.md`](docs/deploy.md).
 >
 > Data contoh di tangkapan layar berasal dari katalog sintetis CI (sampul biru polos, MP3 sunyi), bukan musik sungguhan. Katalog asli belum diisi (lihat [Sumber audio](#sumber-audio-katalog)).
 
@@ -64,9 +64,10 @@ Jalankan lokal: `npm run lint && npx tsc --noEmit && npm run build` dan skrip `n
 
 ## Batasan yang diakui
 
-- **Safari iOS asli belum diuji.** WebKit desktop di CI bukan iOS dan aturan autoplay iOS lebih ketat; ikuti uji manual di [`docs/deploy.md`](docs/deploy.md) setelah deploy.
-- **Job pembersih belum berjalan di proyek hosted**: logikanya diuji di Supabase CLI lokal, tetapi pembungkus Edge Function (Deno) dan penjadwalan `pg_cron` baru bisa dibuktikan setelah deploy.
-- Katalog asli (`scripts/seed/catalog.json`) belum diisi; CI memakai katalog sintetis.
+- **Safari iOS asli belum diuji.** WebKit desktop di CI bukan iOS dan aturan autoplay iOS lebih ketat; uji manual di iPhone (daftar di [`docs/deploy.md`](docs/deploy.md) §7) belum dilakukan.
+- **Penjadwalan job pembersih belum terbukti di proyek hosted.** Edge Function `cleanup` sudah ter-deploy dan menjawab `200` dengan secret yang benar (`403` tanpa itu), tetapi eksekusi pertama `pg_cron` (menit :07) belum diamati; itu juga satu-satunya bukti bahwa secret di Vault sama dengan secret fungsi.
+- Pengujian otomatis (CI) memakai katalog sintetis dan audio sunyi; audio asli hanya diputar lewat uji manual di produksi.
+- Tiga rahasia pernah tampil di percakapan pengembangan dan belum dirotasi (kunci `service_role` Supabase, Secret key Turnstile, `CLEANUP_SECRET`). Dampaknya terbatas pada proyek demo ini; rotasi dijelaskan di [`docs/deploy.md`](docs/deploy.md).
 - Batas 200 lagu per playlist diuji di SQL dan pesannya di unit test, tidak lewat UI (seed CI hanya 3 lagu).
 - Lighthouse dan audit aksesibilitas otomatis: lihat [Kualitas](#kualitas) untuk hasil terbaru.
 
@@ -153,4 +154,4 @@ Setiap lagu seed dicatat sumber dan lisensinya di bawah (dihasilkan `node script
 
 ## Keep-alive
 
-Proyek Supabase Free di-pause bila aktivitas database rendah selama 7 hari. Workflow [`keepalive`](.github/workflows/keepalive.yml) memanggil RPC `ping()` tiap hari. Isi secret repositori `SUPABASE_URL` dan `SUPABASE_ANON_KEY` (anon key, bukan service role); selama belum diisi, workflow hanya memberi pemberitahuan. GitHub dapat menonaktifkan workflow terjadwal pada repositori publik yang lama tidak aktif; jalankan manual lewat tab Actions (`workflow_dispatch`) bila ada email peringatan pause dari Supabase.
+Proyek Supabase Free di-pause bila aktivitas database rendah selama 7 hari. Workflow [`keepalive`](.github/workflows/keepalive.yml) memanggil RPC `ping()` tiap hari. Isi secret repositori `SUPABASE_URL` dan `SUPABASE_ANON_KEY` (anon key, bukan service role); selama belum diisi, workflow **tetap hijau** dan hanya memberi pemberitahuan, jadi hijau saja bukan bukti: buka log langkah "Panggil ping()" dan pastikan ada `ping: {"ok": true, ...}` (terverifikasi pada run manual 2026-11-21). GitHub dapat menonaktifkan workflow terjadwal pada repositori publik yang lama tidak aktif; jalankan manual lewat tab Actions (`workflow_dispatch`) bila ada email peringatan pause dari Supabase.

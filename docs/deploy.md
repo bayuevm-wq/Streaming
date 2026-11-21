@@ -17,6 +17,38 @@ Stack produksi: **Vercel** (Next.js) + **Supabase** (Postgres, Auth, Storage, Ed
 | 6 | Secret GitHub untuk keep-alive | **Kamu** | ya |
 | 7 | Uji asap manual dan Safari iOS | **Kamu** | — |
 
+## Status deploy (2026-11-21)
+
+Produksi: <https://streaming-neon-delta.vercel.app/> (Supabase region Tokyo, `ap-northeast-1`).
+
+| Tahap | Hasil |
+|---|---|
+| 0–2 | selesai (Turnstile mode *Managed*) |
+| 3 | selesai: 7 migrasi diterapkan, Edge Function `cleanup` ter-deploy, `200 {"songs":0}` dengan secret benar dan `403` tanpa/dengan token salah |
+| 4 | selesai: build hijau 48 detik; bundel klien terverifikasi memuat URL Supabase utuh, Site key asli, kunci anon, dan **tanpa** `service_role` |
+| 5 | selesai: `SELESAI baru: 4 artis, 4 album, 17 lagu | berkas diunggah: 25` |
+| 6 | selesai: run manual `keepalive` mencetak `ping: {"ok": true, ...}` |
+| 7 | uji asap desktop lolos (masuk anonim, putar lagu katalog, unggah, Kredit, konsol bersih) |
+
+**Belum terbukti:** Safari iOS asli; eksekusi pertama `pg_cron` (menit :07) dan kecocokan secret Vault dengan secret fungsi; hasil pemeriksaan bucket dan `cron.job` (tahap 3) tidak dilaporkan tertulis. Rahasia yang pernah tampil di percakapan dan belum dirotasi: `service_role`, Secret key Turnstile, `CLEANUP_SECRET`.
+
+### Temuan saat deploy (koreksi untuk panduan di bawah)
+
+- **Supabase CLI**: `npx supabase` tanpa versi mengunduh 3.2.0, bukan 3.0.0 yang dikunci di CI. Pakai `npx supabase@3.0.0 ...`.
+- **`db push` di CLI 3.x menargetkan database lokal secara bawaan** dan gagal bila Docker mati (`ECONNREFUSED 127.0.0.1:54322`). Untuk produksi tambahkan `--remote`: `npx supabase@3.0.0 db push --remote`, lalu pastikan baris `Target:` menyebut proyek, bukan `local stack`. `link` tidak meminta password database.
+- **`functions deploy`** menampilkan "Docker is not running" tetapi tetap berhasil (jalur API).
+- **Jangan mengetik `<` `>`** dari contoh. `CLEANUP_SECRET=<nilai>` dan `'<nilai>'` di Vault menyimpan kurung sudut ikut sebagai bagian nilai, sehingga fungsi dan Vault berbeda. Perbaiki dengan `select vault.update_secret((select id from vault.secrets where name = 'cleanup_secret'), '<nilai tanpa kurung>');` dan periksa `select length(decrypted_secret) from vault.decrypted_secrets where name = 'cleanup_secret';` (harus 64).
+- **Cetakan terminal membocorkan rahasia**: `node -e "console.log(...)"` mencetak secret. Untuk berikutnya: `node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))" | Set-Clipboard`. Uji fungsi lewat variabel (`$s = "..."`, lalu `Bearer $s`), bukan menempel di baris perintah.
+- **Cloudflare**: hostname Turnstile ada di **Edit Widget**, bukan menu "Hostname Management". Hostname diisi tanpa `https://`; Anda perlu menambahkan alamat Vercel final.
+- **Vercel**: di tampilan terbaru tombol *Create Project* hanya membuat proyek (variabel lingkungan tersimpan), build baru berjalan saat *Deploy*. Lewati kartu *Optional Integrations → Supabase*, karena menambah/menimpa variabel otomatis. Titik sisa di ujung `NEXT_PUBLIC_SUPABASE_URL` (`...supabase.co.`) merusak semua panggilan; periksa sebelum deploy.
+- **`keepalive` hijau bukan bukti**: tanpa secret, langkahnya lewat dan tetap hijau. Periksa log "Panggil ping()".
+
+### Rotasi rahasia (opsional, belum dilakukan)
+
+- `service_role` dan kunci anon: Supabase → Project Settings → JWT Keys/JWT Secret → rotasi (mengganti keduanya). Lalu perbarui `NEXT_PUBLIC_SUPABASE_ANON_KEY` dan `SUPABASE_SERVICE_ROLE_KEY` di Vercel, secret GitHub `SUPABASE_ANON_KEY`, dan `.env.production.local`; redeploy.
+- Turnstile: Cloudflare → widget → *Rotate secret key*, lalu tempel di Supabase → Authentication → Attack Protection.
+- `CLEANUP_SECRET`: buat nilai baru, `vault.update_secret(...)` dan `supabase secrets set` dengan nilai yang sama.
+
 ## 0. Prasyarat
 
 - [ ] Akun: GitHub (sudah), Vercel, Supabase, Cloudflare.
@@ -45,10 +77,10 @@ Stack produksi: **Vercel** (Next.js) + **Supabase** (Postgres, Auth, Storage, Ed
 Prasyarat lokal: Supabase CLI **3.0.0** (versi yang dikunci di CI), `supabase login`.
 
 ```bash
-supabase link --project-ref <ref>
+npx supabase@3.0.0 link --project-ref <ref>
 ```
 
-**Perhatian migrasi `0005_cron.sql`:** berisi placeholder `<PROJECT_REF>` pada URL Edge Function. Jangan jalankan `supabase db push` sebelum placeholder itu diganti dengan project ref asli (di salinan lokal berkas itu atau lewat migrasi baru `0007`). Bila tidak, cron memanggil alamat yang tidak ada dan job pembersih diam-diam tidak berjalan.
+**Perhatian migrasi `0005_cron.sql`:** berisi placeholder `<PROJECT_REF>` pada URL Edge Function. Jangan jalankan `db push` sebelum placeholder itu diganti dengan project ref asli di salinan lokal berkas itu (jangan di-commit; kembalikan dengan `git checkout -- supabase/migrations/0005_cron.sql` setelah push). Menyunting migrasi yang sudah diterapkan tidak berefek, jadi bila terlanjur, tulis migrasi baru yang menjadwalkan ulang job. Bila tidak, cron memanggil alamat yang tidak ada dan job pembersih diam-diam tidak berjalan.
 
 Urutan:
 
@@ -56,11 +88,11 @@ Urutan:
 # 1) Vault: rahasia yang dipakai cron untuk memanggil Edge Function (SQL editor Supabase)
 #    select vault.create_secret('<CLEANUP_SECRET>', 'cleanup_secret');
 # 2) Rahasia fungsi (nilai SAMA dengan di Vault)
-supabase secrets set CLEANUP_SECRET=<CLEANUP_SECRET>
+npx supabase@3.0.0 secrets set CLEANUP_SECRET="<CLEANUP_SECRET>"   # tanpa kurung sudut; lihat temuan di atas
 # 3) Deploy Edge Function (memakai rahasianya sendiri, bukan JWT)
-supabase functions deploy cleanup --no-verify-jwt
+npx supabase@3.0.0 functions deploy cleanup --no-verify-jwt
 # 4) Migrasi (setelah <PROJECT_REF> pada 0005 diganti)
-supabase db push
+npx supabase@3.0.0 db push --remote
 ```
 
 `<CLEANUP_SECRET>` = string acak panjang (mis. `openssl rand -hex 32`). Simpan di pengelola kata sandi.
@@ -89,10 +121,10 @@ Verifikasi (saya bisa bantu membaca hasilnya bila kamu tempel keluarannya, **tan
 
 ## 5. Seed katalog (kamu menjalankan)
 
-Persiapan di mesinmu (audio asli ada di folder di luar repo, mis. `E:musik-seed`; tidak pernah di-commit):
+Persiapan di mesinmu (audio asli ada di folder di luar repo, mis. `E:\musik-seed`; tidak pernah di-commit):
 
 ```bash
-node scripts/seed/prepare-audio.mjs --src "E:musik-seed"   # salin/konversi ke MP3 192 kbps di scripts/seed/audio/, periksa validator MP3
+node scripts/seed/prepare-audio.mjs --src "E:\musik-seed"   # salin/konversi ke MP3 192 kbps di scripts/seed/audio/, periksa validator MP3
 node scripts/seed/make-covers.mjs                            # sampul buatan sendiri di scripts/seed/covers/
 npm run seed:check                                           # harus: OK 17 lagu, 4 album, 4 artis
 ```
